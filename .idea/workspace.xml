@@ -5,8 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43b65c70-3f74-48f1-be4e-e37a362f9231" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/StoneSpikeFeature.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldBiomeSource.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldBiomeSource.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldChunkGenerator.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldChunkGenerator.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

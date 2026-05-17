@@ -11,15 +11,16 @@ import net.minecraft.world.level.block.state.BlockState
 object OffworldWorldgen {
 
     fun assemble(
-        spec: WorldgenSpec,
+        specFactory: (Long) -> WorldgenSpec,
         biomeLookup: HolderGetter<Biome>,
     ): OffworldChunkGenerator {
+        val initialSpec = specFactory(0L)
         val tables = SeamTables.of(
-            orderedBlocks = spec.blockNames.map(::resolveBlock),
-            orderedBiomes = spec.biomeNames.map { biomeLookup.getOrThrow(resolveBiome(it)) }
+            orderedBlocks = initialSpec.blockNames.map(::resolveBlock),
+            orderedBiomes = initialSpec.biomeNames.map { biomeLookup.getOrThrow(resolveBiome(it)) }
         )
-        val biomeSource = OffworldBiomeSource(spec.climate, spec.biomes, tables)
-        return OffworldChunkGenerator(biomeSource, tables, spec.pipeline, spec.world)
+        val biomeSource = OffworldBiomeSource(tables, initialSpec)
+        return OffworldChunkGenerator(biomeSource, tables, specFactory)
     }
 
     private fun resolveBlock(name: String): BlockState = when (name) {
