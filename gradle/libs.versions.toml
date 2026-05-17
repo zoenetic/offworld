@@ -1,0 +1,37 @@
+[versions]
+minecraft = "26.1.2"
+fabric-loader = "0.19.2"
+fabric-api = "0.148.2+26.1.2"
+fabric-language-kotlin = "1.13.11+kotlin.2.3.21"
+
+kotlin = "2.3.21"
+kotlinx-serialization = "1.11.0"
+kotlinx-coroutines = "1.11.0"
+
+loom = "1.16.1"
+
+junit = "6.0.3"
+kotest = "6.1.11"
+
+datafixerupper = "8.0.16"
+
+[libraries]
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+fabric-language-kotlin = { module = "net.fabricmc:fabric-language-kotlin", version.ref = "fabric-language-kotlin" }
+
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+datafixerupper = { module = "com.mojang:datafixerupper", version.ref = "datafixerupper"}
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+fabric-loom = { id = "net.fabricmc.fabric-loom", version.ref = "loom" }

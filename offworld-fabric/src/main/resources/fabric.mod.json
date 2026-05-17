@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "offworld",
+  "version": "${version}",
+  "name": "Offworld",
+  "description": "Offworld tech mod — custom worldgen and industry.",
+  "authors": [
+    "zoenetic"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "kotlin",
+        "value": "dev.zoenetic.offworld.OffworldMod"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "fabric-language-kotlin": "*",
+    "minecraft": "~26.1.2",
+    "java": ">=25"
+  }
+}
