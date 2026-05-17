@@ -116,11 +116,27 @@ object SmokeWorldgen {
 
         val carver = TunnelCarver()
 
+        val spikeFeature = StoneSpikeFeature(
+            stone = BlockId(STONE),
+            air = BlockId(AIR),
+        )
+
         val randomFactory: (WorldContext, ChunkPos, String) -> PositionalRandom =
-            { _, _, _ ->
+            { worldCtx, pos, id ->
+                var s = worldCtx.seed
+                s = s xor (pos.x.toLong() * 0x9E3779B97F4A7C15uL.toLong())
+                s = s xor (pos.z.toLong() * 0xC2B2AE3D27D4EB4FuL.toLong())
+                s = s xor (id.hashCode().toLong() * 0xBF58476D1CE4E5B9uL.toLong())
                 object : PositionalRandom {
-                    override fun nextInt(bound: Int): Int = 0
-                    override fun nextDouble(): Double = 0.0
+                    override fun nextInt(bound: Int): Int {
+                        require(bound > 0) { "bound must be positive" }
+                        s = s * 6364136223846793005L + 1442695040888963407L
+                        return ((s ushr 33).toInt() and 0x7fffffff) % bound
+                    }
+                    override fun nextDouble(): Double {
+                        s = s * 6364136223846793005L + 1442695040888963407L
+                        return ((s ushr 11) and 0x1FFFFFFFFFFFFFL).toDouble() / (1L shl 53)
+                    }
                 }
             }
 
@@ -130,7 +146,7 @@ object SmokeWorldgen {
             terrain = terrain,
             surface = surface,
             carvers = listOf(carver),
-            features = emptyList(),
+            features = listOf(spikeFeature),
             scheduler = TopoFeatureScheduler(),
             randomFactory = randomFactory,
             airBlock = BlockId(AIR),

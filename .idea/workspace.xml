@@ -5,7 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43b65c70-3f74-48f1-be4e-e37a362f9231" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/StoneSpikeFeature.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,6 +55,13 @@
         </projects_view>
       </state>
     </system>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Kotlin Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
