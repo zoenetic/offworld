@@ -1,5 +1,14 @@
 package dev.zoenetic.offworld.worldgen
 
+private fun columnDither(seed: Long, wx: Int, wz: Int): Double {
+    var s = seed
+    s = s xor (wx.toLong() * 0x9E3779B97F4A7C15uL.toLong())
+    s = s xor (wz.toLong() * 0xC2B2AE3D27D4EB4FuL.toLong())
+    s = s xor 0x6A09E667F3BCC908uL.toLong()
+    s = s * 6364136223846793005L + 1442695040888963407L
+    return ((s ushr 11) and 0x1FFFFFFFFFFFFFL).toDouble() / (1L shl 53)
+}
+
 class WorldgenPipeline(
     private val climate: ClimateSpace,
     private val biomes: BiomeResolver,
@@ -28,6 +37,7 @@ class WorldgenPipeline(
                 val bc = biomes.resolve(sample)
                 biomeGrid[lx][lz] = bc
                 val surfaceY = findSurfaceY(wx, wz, world, bc)
+                val dither = columnDither(world.seed, wx, wz)
                 for (y in world.minY..surfaceY) {
                     val stoneDepth = surfaceY - y
                     val sctx = SurfaceCtx(
@@ -36,11 +46,12 @@ class WorldgenPipeline(
                         stoneDepth = stoneDepth,
                         biome = bc,
                         world = world,
+                        dither = dither,
                     )
                     val block = surface.apply(sctx)
                         ?: error(
                             "surface rule produced no block at " +
-                                "($wx,$y,$wz); the rule trtee must have a " +
+                                "($wx,$y,$wz); the rule tree must have a " +
                                     "terminal Place",
                         )
                     target.setBlock(wx, y, wz, block)

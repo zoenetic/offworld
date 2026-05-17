@@ -66,7 +66,7 @@ object SmokeWorldgen {
             ),
             axes = listOf(StandardAxes.TEMPERATURE, StandardAxes.HUMIDITY),
             k = 2,
-            sigma = 0.7,
+            sigma = 0.15,
         )
 
         val terrainField = FractalField(seed + 1, period = TERRAIN_PERIOD, columnConstant = true)
@@ -105,12 +105,11 @@ object SmokeWorldgen {
             listOf(
                 SurfaceRule.Conditioned(
                     cond = { ctx ->
-                        val w = ctx.weightOf(DESERT)
-                        w > 0.5 && ctx.stoneDepth < ((w - 0.5) * 2.0 * SAND_DEPTH).toInt()
-                        },
-                    then = SurfaceRule.Place { _, -> BlockId(SAND)},
+                        ctx.dither < ctx.weightOf(DESERT) && ctx.stoneDepth < SAND_DEPTH
+                    },
+                    then = SurfaceRule.Place { _ -> BlockId(SAND) },
                 ),
-                SurfaceRule.Place { _, -> BlockId(STONE)},
+                SurfaceRule.Place { _ -> BlockId(STONE) },
             ),
         )
 

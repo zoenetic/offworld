@@ -6,6 +6,7 @@ class SurfaceCtx(
     val stoneDepth: Int,
     val biome: BiomeContext,
     val world: WorldContext,
+    val dither: Double,
 )
 
 fun interface SurfaceCondition { fun test(ctx: SurfaceCtx): Boolean }
