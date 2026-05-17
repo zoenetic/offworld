@@ -5,6 +5,7 @@ class WorldgenPipeline(
     private val biomes: BiomeResolver,
     private val terrain: TerrainShaper,
     private val surface: SurfaceRule,
+    private val carvers: List<Carver>,
     private val features: List<PlacedFeature>,
     private val scheduler: FeatureScheduler,
     private val randomFactory: (WorldContext, ChunkPos, String) -> PositionalRandom,
@@ -43,6 +44,23 @@ class WorldgenPipeline(
                                     "terminal Place",
                         )
                     target.setBlock(wx, y, wz, block)
+                }
+            }
+        }
+        if (carvers.isNotEmpty()) {
+            val mask = CarveMask(world.minY, world.height)
+            for (carver in carvers) {
+                carver.carve(pos, world, terrain, mask)
+            }
+            for (lz in 0 until 16) {
+                for (lx in 0 until 16) {
+                    val wx = pos.minBlockX + lx
+                    val wz = pos.minBlockZ + lz
+                    for (y in world.minY until world.maxY) {
+                        if (mask.isCarved(lx, lz, y)) {
+                            target.setBlock(wx, y, wz, airBlock)
+                        }
+                    }
                 }
             }
         }

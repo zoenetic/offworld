@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43b65c70-3f74-48f1-be4e-e37a362f9231" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/SmokeWorldgen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/SmokeWorldgen.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

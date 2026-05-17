@@ -114,6 +114,8 @@ object SmokeWorldgen {
             ),
         )
 
+        val carver = TunnelCarver()
+
         val randomFactory: (WorldContext, ChunkPos, String) -> PositionalRandom =
             { _, _, _ ->
                 object : PositionalRandom {
@@ -127,6 +129,7 @@ object SmokeWorldgen {
             biomes = resolver,
             terrain = terrain,
             surface = surface,
+            carvers = listOf(carver),
             features = emptyList(),
             scheduler = TopoFeatureScheduler(),
             randomFactory = randomFactory,
