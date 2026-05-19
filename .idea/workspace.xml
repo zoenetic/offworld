@@ -5,9 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43b65c70-3f74-48f1-be4e-e37a362f9231" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/block/OffworldCreativeTab.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/biomes/OffworldBiomes.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/block/OffworldBlocks.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/offworld/Keys.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/tools/texturegen/Main.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/OffworldMod.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/OffworldMod.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldChunkGenerator.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldChunkGenerator.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld-fabric/src/main/kotlin/dev/zoenetic/offworld/fabric/worldgen/OffworldWorldgen.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Pipeline.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Surface.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/Surface.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/WorldgenSpec.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/main/kotlin/dev/zoenetic/offworld/worldgen/WorldgenSpec.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/SmokeWorldgen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/offworld/src/testFixtures/kotlin/dev/zoenetic/offworld/worldgen/SmokeWorldgen.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -73,6 +84,9 @@
   &quot;associatedIndex&quot;: 5
 }</component>
   <component name="ProjectId" id="3Dra5HutUK9eNe3hApZS1Y5aPpQ" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showExcludedFiles" value="false" />
@@ -81,17 +95,51 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Gradle.offworld [:offworld-fabric:runClient].executor": "Run",
+    "Gradle.offworld [generatePlaceholderAssets].executor": "Run",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true"
   }
 }]]></component>
-  <component name="RunManager">
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/offworld/src/main/resources/offworld" />
+      <recent name="$PROJECT_DIR$/offworld-fabric/src/main/resources" />
+      <recent name="$PROJECT_DIR$/offworld-fabric/src/main" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Gradle.offworld [:offworld-fabric:runClient]">
+    <configuration name="offworld [:offworld-fabric:build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value=":offworld-fabric:build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
     <configuration name="offworld [:offworld-fabric:runClient]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
@@ -117,9 +165,36 @@
       <GradleCoverageDisabled>false</GradleCoverageDisabled>
       <method v="2" />
     </configuration>
+    <configuration name="offworld [generatePlaceholderAssets]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="generatePlaceholderAssets" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Gradle.offworld [:offworld-fabric:runClient]" />
+        <item itemvalue="Gradle.offworld [:offworld-fabric:build]" />
+        <item itemvalue="Gradle.offworld [generatePlaceholderAssets]" />
       </list>
     </recent_temporary>
   </component>

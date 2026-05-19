@@ -1,5 +1,7 @@
 package dev.zoenetic.offworld
 
+import dev.zoenetic.offworld.block.OffworldBlocks
+import dev.zoenetic.offworld.block.OffworldCreativeTab
 import dev.zoenetic.offworld.fabric.worldgen.OffworldChunkGenerator
 import net.fabricmc.api.ModInitializer
 import net.minecraft.core.Registry
@@ -13,6 +15,8 @@ object OffworldMod : ModInitializer {
     val LOGGER: Logger = LoggerFactory.getLogger(MOD_ID)
     override fun onInitialize() {
         LOGGER.info("Offworld initializing...")
+        OffworldBlocks.register(MOD_ID)
+        OffworldCreativeTab.init()
         Registry.register(
             BuiltInRegistries.CHUNK_GENERATOR,
             Identifier.fromNamespaceAndPath(MOD_ID, "offworld"),

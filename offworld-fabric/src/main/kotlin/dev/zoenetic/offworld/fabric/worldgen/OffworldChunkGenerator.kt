@@ -92,7 +92,10 @@ class OffworldChunkGenerator(
         type: Heightmap.Types,
         level: LevelHeightAccessor,
         randomState: RandomState,
-    ): Int = world.minY
+    ): Int {
+        val spec = offworldBiomeSource.spec
+        return spec.pipeline.surfaceHeight(x, z, spec.world) + 1
+    }
 
     override fun getBaseColumn(
         x: Int,

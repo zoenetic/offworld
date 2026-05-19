@@ -56,3 +56,23 @@ tasks.test {
         showStandardStreams = false
     }
 }
+
+val texturegen by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    texturegen(project(":offworld"))
+}
+
+val generatePlaceholderAssets by tasks.registering(JavaExec::class) {
+    val outDir = layout.buildDirectory.dir("generated/assets/main")
+
+    classpath = texturegen
+    mainClass.set("dev.zoenetic.offworld.tools.TexturegenMainKt")
+    args(outDir.get().asFile.absolutePath)
+
+    inputs.files(texturegen)
+    outputs.dir(outDir)
+}

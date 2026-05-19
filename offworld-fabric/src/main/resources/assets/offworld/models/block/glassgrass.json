@@ -1,0 +1,20 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "stalk": "offworld:block/glassgrass",
+    "particle": "offworld:block/glassgrass"
+  },
+  "elements": [{
+    "from": [6, 0, 6],
+    "to": [10, 16, 10],
+    "shade": false,
+    "faces": {
+      "north": {"uv": [0, 0, 4, 16], "texture": "#stalk"},
+      "south": {"uv": [0, 0, 4, 16], "texture": "#stalk"},
+      "east":  {"uv": [0, 0, 4, 16], "texture": "#stalk"},
+      "west":  {"uv": [0, 0, 4, 16], "texture": "#stalk"},
+      "up":    {"uv": [0, 0, 4,  4], "texture": "#stalk"},
+      "down":  {"uv": [0, 0, 4,  4], "texture": "#stalk"}
+    }
+  }]
+}

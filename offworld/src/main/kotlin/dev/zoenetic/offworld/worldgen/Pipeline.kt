@@ -109,4 +109,9 @@ class WorldgenPipeline(
         }
         return refined
     }
+
+    fun surfaceHeight(wx: Int, wz: Int, world: WorldContext): Int {
+        val bc = biomes.resolve(climate.sampleAt(wx, world.minY + world.height, wz))
+        return findSurfaceY(wx, wz, world, bc)
+    }
 }
