@@ -7,10 +7,6 @@ members = [
     "game",
 ]
 
-# Cargo owns genesis/* + game. Gradle owns minecraft/** and is invisible here —
-# the two manifests ignore each other by explicit membership. See
-# docs/genesis-rust.md §4.
-
 [workspace.package]
 edition = "2024"
 version = "0.0.0"

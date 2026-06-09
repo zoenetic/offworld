@@ -3,8 +3,15 @@
 Status: **plan of record** (genesis not started yet; the existing engine keeps
 running). This supersedes the *substrate* decision in `genesis-refactor.md`:
 genesis is built in **Rust**, not Kotlin Multiplatform. The field-up model, the
-three-rings architecture, and the genesis vocabulary carry over unchanged — see
-§9 for exactly what is kept vs. replaced.
+three-rings architecture, and most of the genesis vocabulary carry over — see
+§9 for what is kept vs. replaced.
+
+**Revised this pass:** the discrete/voxel layer is *not* part of genesis. Genesis
+emits a region of continuous **output fields** (a density/solidity scalar, a
+material classification, …); turning those into *blocks* (Minecraft) or a *mesh*
+(the native game) is the **caller's interpretation**. `BlockId` and `Canvas` are
+caller-side concepts and have left `core`. The line genesis holds is *physical
+field vs. block/mesh* — not *continuous vs. discrete* (see §3, §5).
 
 ## What this document is
 
@@ -88,9 +95,10 @@ reused verbatim.
 This is what "write it so the boundary stays clean" means concretely.
 
 1. **`genesis/core` is `#![no_std]`-friendly, pure, and FFI-blind.** No JVM types,
-   no `genesis/ffi` dependency, no host concepts. It deals in `BlockId`,
-   `BiomeId`, `Vec3i`, `Field`, `Canvas`. `core` does not know it will ever be
-   called across a C ABI.
+   no `genesis/ffi` dependency, no host concepts. It deals in `Field`,
+   `Environment`, `Region`, `FieldSet`, `MaterialId` — continuous fields and the
+   maths over them, never `BlockId` or `Canvas`. `core` does not know it will
+   ever be called across a C ABI.
 2. **`genesis/ffi` is the *only* crate with `unsafe`/C-ABI surface.** It is a
    `cdylib` that wraps `core` behind a flat C interface (opaque handles + a
    chunk-fill entry point writing a shared `BlockId` buffer). It exists solely so
@@ -99,8 +107,9 @@ This is what "write it so the boundary stays clean" means concretely.
    `WorldSpec`, position). Seeded positional RNG, deliberate floating-point — so
    the *same world* appears in the mod and in the native game.
 4. **The FFI contract is data, not objects.** The boundary trades a `WorldSpec`
-   (serializable) in and a flat `BlockId` buffer out. No object graphs cross; no
-   callbacks per block. This keeps the marshalling cost at §5's "once per chunk."
+   (serializable) in and the region's baked **output-field buffers** out (flat
+   `f64`/`MaterialId` arrays). No object graphs cross, no blocks cross, no
+   per-cell callbacks. This keeps the marshalling cost at §5's "once per region."
 5. **`viz` is pure too.** The headless render core depends on `core` only; PNG
    encoding is a `viz` concern, never a `core` one.
 
@@ -139,10 +148,19 @@ offworld/                    repo root; Cargo.toml + settings.gradle.kts side by
 
 - **FFI is opt-in per host.** `game` → `core` natively. `content`/`tech` → the
   `ffi` cdylib via **FFM/Panama** (not JNI). `core` never knows `ffi` exists.
-- **Cross once per chunk, never per block.** Rust fills a flat shared buffer of
-  `BlockId`s for the whole chunk; the JVM `MinecraftCanvas` drains it in a single
-  pass into the real `ChunkAccess`. This is the entire perf argument for the
-  boundary being acceptable.
+- **Cross once per region, in fields, never per block.** Rust fills the region's
+  output-field buffers once (a density/solidity scalar + a material
+  classification); the JVM adapter *interprets* them in a single pass into the
+  real `ChunkAccess` (threshold + palette), and the native `game` isosurfaces the
+  *same* fields into a mesh. Only fields cross the boundary — blocks and meshes
+  are produced caller-side. This is the entire perf argument for the boundary.
+- **Fields out, never blocks; physics stays continuous, the domain may not.** The
+  pure `Environment` fields are lazy, stateless `sample(p)` functions. The
+  stateful stages (deposition/erosion/carve) are *non-local* — they integrate
+  along columns and flow between neighbours — so they run over a **materialized
+  working domain** inside genesis and bake their result into the output fields.
+  That internal grid holds *physical quantities*, not blocks: the line held is
+  physical-field-vs-block, not continuous-vs-discrete.
 - **The cdylib ships only with `tech`/`content`** — never with the cosmetic
   `menu` mod, which touches neither genesis nor the native library.
 - **Four published leaf jars need distinct `archivesName`:**
@@ -165,16 +183,21 @@ Environment, Generator.**
   `Environment` (registry of named fields), `EnvironmentSample`,
   `FieldSampler`/`FieldGrid`, combinators (`Add`/`Mul`/`Scale`/`Clamp`/`Spline`),
   `WindField`/`WindSample`.
-- **The discrete layer:** `Generator` (per-chunk driver) running
-  `DepositionRule` + `ColumnState` (transport-capable) → `Erosion`
-  (`NoErosion` default) → `Seeder` × `GrowthRule` → `Carver`, all writing
-  `Canvas`.
+- **The generative layer (bakes the output fields, not blocks):** `Generator`
+  (per-region driver) running `DepositionRule` + `ColumnState`
+  (transport-capable) → `Erosion` (`NoErosion` default) → `Seeder` ×
+  `GrowthRule` → `Carver`, all writing into the region's `FieldSet`
+  (solidity/material/…), never a `Canvas`.
 - **Biome is a label, not a stage:** `BiomeLabeller` (pure
   `EnvironmentSample → BiomeBlend` projection; also groups deposition/growth
   rules), `NearestBiomeLabeller`, `BiomeBlend`.
-- **Identifiers & adapter:** `BlockId`/`BiomeId` (opaque ints), `Vec3i`,
-  `Catalog` (human keys → ids while building); on the JVM side `BlockPalette`,
-  `MinecraftCanvas`, `GenesisChunkGenerator`/`GenesisBiomeSource`.
+- **Core identifiers & domain:** `FieldId`, `MaterialId`/`BiomeId` (opaque
+  codomains of classification fields), `Vec3` (continuous sample point) and
+  `Vec3i` (lattice index), `Region`/`Domain`, `FieldSet` (the baked output),
+  `Catalog` (human keys → ids while building).
+- **Adapter (caller-side, NOT `core`):** `BlockId`, `BlockPalette`, `Canvas`/
+  `MinecraftCanvas`, `GenesisChunkGenerator`/`GenesisBiomeSource` — these read
+  the output fields and *interpret* them into blocks/biomes.
 
 ---
 
@@ -186,7 +209,8 @@ needed (the host's biome source, debug display, rule grouping). Because the labe
 is a function of the *fields*, it's available before generation and keeps
 generation chunk-independent.
 
-Generation is four stages, each reading the Environment and writing the Canvas:
+Generation is four stages, each reading the Environment and writing into the
+region's output fields:
 
 1. **Deposition (bottom-up)** — sweep the column from `minY` up carrying a
    `ColumnState`; at each height sample the Environment and apply the
@@ -197,11 +221,12 @@ Generation is four stages, each reading the Environment and writing the Canvas:
 3. **Growth (seeded)** — a `Seeder` turns a density field into seed positions;
    each seed runs a `GrowthRule` painting a structure (coral branches, wind =
    drift). Plain scatter is the degenerate case.
-4. **Carve** — `Carver`s remove blocks for caves.
+4. **Carve** — `Carver`s subtract from the solidity field (caves / voids).
 
-Every placement writes the per-chunk buffer. On the JVM the cdylib hands that one
-buffer across the boundary and `MinecraftCanvas` drains it (§5). In `game` the
-host reads the buffer directly.
+Every stage writes the region's output fields. On the JVM the cdylib hands those
+field buffers across the boundary and the adapter interprets them into blocks
+(§5); in `game` the host reads the same fields and isosurfaces or voxelizes them
+directly. Genesis itself never emits a block.
 
 **Tooling.** Minecraft is the *acceptance test*, not the tuning instrument. The
 instrument is `genesis/viz`: a headless render core (`render_field_slice`,
@@ -238,8 +263,9 @@ something you can look at headlessly.
 - **Phase 4 — Growth.** `Seeder` + `GrowthRule`; reimplement `GlassGrass`
   (Seeder + single block) and `PaleCoralglass` (seeded branching; wind = drift).
 - **Phase 5 — The FFI + JVM adapter.** Write `genesis/ffi` (cdylib, C ABI,
-  per-chunk buffer fill). On the Gradle side write `content`: `BlockPalette`,
-  `MinecraftCanvas` (drains the buffer), `GenesisChunkGenerator`/
+  per-region output-field fill). On the Gradle side write `content`:
+  `BlockPalette`, `MinecraftCanvas` (interprets the fields into blocks),
+  `GenesisChunkGenerator`/
   `GenesisBiomeSource`, and cdylib bundling/loading via FFM. Register as a
   **second dimension** (or behind a flag) so the existing `offworld` dimension is
   untouched and both coexist for comparison.

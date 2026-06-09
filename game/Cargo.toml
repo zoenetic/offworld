@@ -4,8 +4,6 @@ edition.workspace = true
 version.workspace = true
 rust-version.workspace = true
 
-# The native standalone host. Links genesis_core directly — no FFI, no JVM, no
-# marshalling. The proof that the engine is host-agnostic. See §2, §4, Phase 5b.
 [dependencies]
 genesis-core = { workspace = true }
 genesis-viz = { workspace = true }
