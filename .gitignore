@@ -19,3 +19,6 @@ result-*
 .vscode/
 *.iml
 .DS_Store
+
+# --- genesis-viz ---
+*.pgm
