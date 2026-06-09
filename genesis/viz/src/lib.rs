@@ -18,6 +18,19 @@ pub fn render_field_slice(field: &impl Field, width: usize, height: usize, scale
     GreyImage { width, height, pixels }
 }
 
+pub fn render_vertical_slice(field: &impl Field, width: usize, height: usize, scale: f64, z: f64) -> GreyImage {
+    let mut pixels = vec![0u8; width * height];
+    for j in 0..height {
+        for i in 0..width {
+            let y = (height - 1 - j) as f64 * scale;
+            let p = Vec3::new(i as f64 * scale, y, z);
+            let v = field.sample(p).clamp(0.0, 1.0);
+            pixels[j * width + i] = (v * 255.0) as u8;
+        }
+    }
+    GreyImage { width, height, pixels }
+}
+
 pub fn write_pgm(img: &GreyImage, path: &str) -> std::io::Result<()> {
     use std::io::Write;
     let mut f = std::io::BufWriter::new(std::fs::File::create(path)?);
