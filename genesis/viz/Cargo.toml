@@ -1,0 +1,12 @@
+[package]
+name = "genesis-viz"
+edition.workspace = true
+version.workspace = true
+rust-version.workspace = true
+
+# Headless render core: draws the model's internal state (field slices, biome
+# maps, column slices) + golden-image harness. Depends on core ONLY; PNG encoding
+# is a viz concern, never a core one.
+[dependencies]
+genesis-core = { workspace = true }
+# TODO(you): add `png` (or image) here when render output lands.

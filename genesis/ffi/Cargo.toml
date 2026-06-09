@@ -1,0 +1,14 @@
+[package]
+name = "genesis-ffi"
+edition.workspace = true
+version.workspace = true
+rust-version.workspace = true
+
+# The ONLY crate with unsafe / C-ABI surface. Output is libgenesis.{so,dylib,dll}
+# so the JVM can dlopen it via FFM/Panama. core/viz never depend on this.
+[lib]
+name = "genesis"
+crate-type = ["cdylib"]
+
+[dependencies]
+genesis-core = { workspace = true }

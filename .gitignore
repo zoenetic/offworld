@@ -1,0 +1,21 @@
+# --- Rust (Cargo owns genesis/* + game) ---
+/target/
+**/*.rs.bk
+
+# --- Gradle / JVM (owns minecraft/**) ---
+.gradle/
+build/
+**/build/
+!src/**/build/
+*.class
+
+# --- Nix ---
+result
+result-*
+.direnv/
+
+# --- editors / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store

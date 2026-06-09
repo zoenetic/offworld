@@ -1,0 +1,8 @@
+[package]
+name = "genesis-core"
+edition.workspace = true
+version.workspace = true
+rust-version.workspace = true
+
+# Pure, host-agnostic, FFI-blind. No dependency on genesis-ffi, no JVM types.
+[dependencies]
