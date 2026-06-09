@@ -3,9 +3,11 @@ mod field;
 mod environment;
 mod noise;
 mod combinators;
+mod grid;
 
 pub use combinators::{Frequency, Add, Clamp, Scale, FieldExt};
 pub use environment::{Environment, FieldId};
 pub use field::{Field, Constant};
 pub use geometry::{Vec3};
+pub use grid::{FieldGrid, bake};
 pub use noise::ValueNoise;
