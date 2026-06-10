@@ -26,6 +26,10 @@ impl FieldGrid {
         let n = self.idx(i, j, k);
         self.data[n] = v;
     }
+
+    pub fn as_slice(&self) -> &[f64] {
+        &self.data
+    }
 }
 
 pub fn bake(field: &impl Field, origin: Vec3, spacing: f64, nx: usize, ny: usize, nz: usize) -> FieldGrid {
