@@ -1,53 +1,44 @@
 use crate::{Field, Vec3};
 
-pub struct FieldGrid {
+pub struct Grid<T> {
     pub origin: Vec3,
     pub spacing: f64,
     pub nx: usize,
     pub ny: usize,
     pub nz: usize,
-    data: Vec<f64>,
+    data: Vec<T>,
 }
 
-impl FieldGrid {
+impl<T: Copy + Default> Grid<T> {
     pub fn new(origin: Vec3, spacing: f64, nx: usize, ny: usize, nz: usize) -> Self {
-        Self { origin, spacing, nx, ny, nz, data: vec![0.0; nx * ny * nz] }
+        Self { origin, spacing, nx, ny, nz, data: vec![T::default(); nx * ny * nz] }
     }
-
     fn idx(&self, i: usize, j: usize, k: usize) -> usize {
         (k * self.ny + j) * self.nx + i
     }
 
-    pub fn get(&self, i: usize, j: usize, k: usize) -> f64 {
-        self.data[self.idx(i, j, k)]
-    }
+    pub fn get(&self, i: usize, j: usize, k: usize) -> T { self.data[self.idx(i, j, k)] }
 
-    pub fn set(&mut self, i: usize, j: usize, k: usize, v: f64) {
+    pub fn set(&mut self, i: usize, j: usize, k: usize, v: T) {
         let n = self.idx(i, j, k);
         self.data[n] = v;
     }
 
-    pub fn as_slice(&self) -> &[f64] {
-        &self.data
+    pub fn as_slice(&self) -> &[T] { &self.data }
+
+    pub fn nearest(&self, p: Vec3) -> T {
+        let cell = |w: f64, o: f64, n: usize| {
+            (((w - o) / self.spacing).round() as i64).clamp(0, n as i64 -1) as usize
+        };
+        self.get(
+            cell(p.x, self.origin.x, self.nx),
+            cell(p.y, self.origin.y, self.ny),
+            cell(p.z, self.origin.z, self.nz),
+        )
     }
 }
 
-pub fn bake(field: &impl Field, origin: Vec3, spacing: f64, nx: usize, ny: usize, nz: usize) -> FieldGrid {
-    let mut grid = FieldGrid::new(origin, spacing, nx, ny, nz);
-    for k in 0..nz {
-        for j in 0..ny {
-            for i in 0..nx {
-                let p = Vec3::new(
-                    origin.x + i as f64 * spacing,
-                    origin.y + j as f64 * spacing,
-                    origin.z + k as f64 * spacing,
-                );
-                grid.set(i, j, k, field.sample(p));
-            }
-        }
-    }
-    grid
-}
+pub type FieldGrid = Grid<f64>;
 
 impl Field for FieldGrid {
     fn sample(&self, p: Vec3) -> f64 {
@@ -73,10 +64,50 @@ impl Field for FieldGrid {
     }
 }
 
+pub fn bake(field: &impl Field, origin: Vec3, spacing: f64, nx: usize, ny: usize, nz: usize) -> FieldGrid {
+    let mut grid = FieldGrid::new(origin, spacing, nx, ny, nz);
+    for k in 0..nz {
+        for j in 0..ny {
+            for i in 0..nx {
+                let p = Vec3::new(
+                    origin.x + i as f64 * spacing,
+                    origin.y + j as f64 * spacing,
+                    origin.z + k as f64 * spacing,
+                );
+                grid.set(i, j, k, field.sample(p));
+            }
+        }
+    }
+    grid
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Constant, ValueNoise, FieldExt};
+    use crate::{Constant, ValueNoise, FieldExt, MaterialId};
+
+    #[test]
+    fn material_grid_defaults_to_none_and_roundtrips() {
+        let mut g: Grid<MaterialId> = Grid::new(Vec3::new(0.0, 0.0, 0.0), 1.0, 2, 2, 2);
+        assert_eq!(g.get(0, 0, 0), MaterialId::NONE);
+        g.set(1, 0, 1, MaterialId(7));
+        assert_eq!(g.get(1, 0, 1), MaterialId(7));
+        assert_eq!(g.get(0, 0, 0), MaterialId::NONE);
+    }
+
+    #[test]
+    fn nearest_rounds_to_closest_cell_and_clamps() {
+        let mut g: Grid<MaterialId> = Grid::new(Vec3::new(0.0, 0.0, 0.0), 1.0, 3, 1, 1);
+        g.set(0, 0, 0, MaterialId(10));
+        g.set(1, 0, 0, MaterialId(20));
+        g.set(2, 0, 0, MaterialId(30));
+
+        assert_eq!(g.nearest(Vec3::new(1.4, 0.0, 0.0)), MaterialId(20));  // rounds down
+        assert_eq!(g.nearest(Vec3::new(1.6, 0.0, 0.0)), MaterialId(30));  // rounds up
+        assert_eq!(g.nearest(Vec3::new(0.5, 0.0, 0.0)), MaterialId(20));  // 0.5 rounds away from zero
+        assert_eq!(g.nearest(Vec3::new(-5.0, 0.0, 0.0)), MaterialId(10)); // clamps to low edge
+        assert_eq!(g.nearest(Vec3::new(99.0, 0.0, 0.0)), MaterialId(30)); // clamps to high edge
+    }
 
     #[test]
     fn baked_constant_is_flat() {
