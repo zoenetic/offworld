@@ -1,10 +1,39 @@
-// offworld :: content — the JVM adapter ring.
-// Owns BlockPalette (BlockId <-> real block), MinecraftCanvas (drains genesis's
-// per-chunk buffer), GenesisChunkGenerator/GenesisBiomeSource. Bundles + loads
-// the genesis cdylib via FFM/Panama. This is the only JVM module that touches
-// the native library. See docs/genesis-rust.md §2, §5.
-plugins { base }
+plugins {
+    kotlin("jvm") version "2.4.0"
+}
+
+repositories { mavenCentral() }
+
+kotlin { jvmToolchain(25) }
 
 base { archivesName.set("offworld-content") }
 
-// TODO(you): java/kotlin + the FFM bindings; bundle libgenesis from genesis/ffi.
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
+val nativeTarget = "linux-x86-64"
+
+val cargoBuild by tasks.registering(Exec::class) {
+    description = "cargo build"
+    workingDir = rootDir
+    commandLine("cargo", "build", "-p", "genesis-ffi")
+}
+
+val copyNative by tasks.registering(Copy::class) {
+    description = "copy native build"
+    dependsOn(cargoBuild)
+    from(rootDir.resolve("target/debug/libgenesis.so"))
+    into(layout.buildDirectory.dir("generated/resources/native/$nativeTarget"))
+}
+
+sourceSets.main {
+    resources.srcDir(layout.buildDirectory.dir("generated/resources"))
+}
+
+tasks.named("processResources") { dependsOn(copyNative) }
+
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
