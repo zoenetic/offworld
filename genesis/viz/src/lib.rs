@@ -1,4 +1,4 @@
-use genesis_core::{Field, Vec3};
+use genesis_core::{Field, Translate, Vec3};
 
 pub struct GreyImage {
     pub width: usize,
@@ -59,5 +59,22 @@ mod tests {
         let a = render_field_slice(&f, 32, 32, 1.0);
         let b = render_field_slice(&f, 32, 32, 1.0);
         assert_eq!(a.pixels, b.pixels);
+    }
+
+    #[test]
+    #[ignore = "writes slice-*.pgm for visual comparison"]
+    fn dump_axis_bias_slices() -> std::io::Result<()> {
+        let at = |offset: Vec3| ValueNoise::new(1).frequency(1.0 / 24.0).translate(offset);
+
+        let img = render_field_slice(&at(Vec3::new(-256.0, 0.0, -256.0)), 512, 512, 1.0);
+        write_pgm(&img, "slice-origin.pgm")?;
+
+        let img = render_field_slice(&at(Vec3::new(10_000.0, 0.0, 10_000.0)), 512, 512, 1.0);
+        write_pgm(&img, "slice-far.pgm")?;
+
+        let img = render_field_slice(&at(Vec3::new(0.0, 10_000.0, 0.0)), 512, 512, 1.0);
+        write_pgm(&img, "slice-y-high.pgm")?;
+
+        Ok(())
     }
 }

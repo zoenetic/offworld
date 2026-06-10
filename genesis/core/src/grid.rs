@@ -32,7 +32,7 @@ pub fn bake(field: &impl Field, origin: Vec3, spacing: f64, nx: usize, ny: usize
     let mut grid = FieldGrid::new(origin, spacing, nx, ny, nz);
     for k in 0..nz {
         for j in 0..ny {
-            for i in 0..nz {
+            for i in 0..nx {
                 let p = Vec3::new(
                     origin.x + i as f64 * spacing,
                     origin.y + j as f64 * spacing,
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn baked_constant_is_flat() {
-        let g = bake(&Constant(0.25), Vec3::new(0.0, 0.0, 0.0), 1.0, 4, 4, 4);
+        let g = bake(&Constant(0.25), Vec3::new(0.0, 0.0, 0.0), 1.0, 4, 3, 4);
         assert_eq!(g.sample(Vec3::new(1.5, 2.0, 0.3)), 0.25);
     }
 

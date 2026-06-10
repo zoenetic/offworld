@@ -78,4 +78,60 @@ mod tests {
         let p = Vec3::new(0.3, 0.7, 0.1);
         assert_ne!(ValueNoise::new(1).sample(p), ValueNoise::new(2).sample(p));
     }
+
+    #[test]
+    fn hash_has_no_structured_collisions() {
+        use std::collections::HashMap;
+
+        let seed = 42;
+        let mut seen: HashMap<u64, (i32, i32, i32)> = HashMap::new();
+        let mut check = |x: i32, y: i32, z: i32| {
+            let h = hash(x, y, z, seed);
+            if let Some(&prev) = seen.get(&h) {
+                assert_eq!(prev, (x, y, z), "collision: {prev:?} vs {:?}", (x, y, z));
+            }
+            seen.insert(h, (x, y, z));
+        };
+
+        for x in -256..256 {
+            for z in -256..256 {
+                check(x, 0, z);
+            }
+        }
+
+        for x in -32..32 {
+            for y in -32..32 {
+                for z in -32..32 {
+                    check(x, y, z);
+                }
+            }
+        };
+
+        for x in 10_000..10_064 {
+            for y in 10_000..10_064 {
+                for z in 10_000..10_064 {
+                    check(x, y, z);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn hash_low_tail_is_window_independent() {
+        let frac_low = |x0: i32, z0: i32| {
+            let mut low = 0u32;
+            for x in x0..x0 + 1024 {
+                for z in z0..z0 + 1024 {
+                    if to_unit(hash(x, 0, z, 42)) < 0.1 {
+                        low += 1;
+                    }
+                }
+            }
+            low as f64 / (1024.0 * 1024.0)
+        };
+        let origin = frac_low(-512, -512);
+        let far = frac_low(10_000, 10_000);
+        assert!((origin - 0.1).abs() < 1.5e-3, "origin low tail: {origin}");
+        assert!((far - 0.1).abs() < 1.5e-3, "far low tail: {far}");
+    }
 }

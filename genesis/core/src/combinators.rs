@@ -49,6 +49,17 @@ impl<F: Field> Field for Clamp<F> {
     }
 }
 
+pub struct Translate<F> {
+    pub input: F,
+    pub offset: Vec3,
+}
+
+impl<F: Field> Field for Translate<F> {
+    fn sample(&self, p: Vec3) -> f64 {
+        self.input.sample(p + self.offset)
+    }
+}
+
 pub trait FieldExt: Field + Sized {
     fn frequency(self, factor: f64) -> Frequency<Self> {
         Frequency { input: self, factor }
@@ -62,6 +73,7 @@ pub trait FieldExt: Field + Sized {
     fn clamp(self, lo: f64, hi: f64) -> Clamp<Self> {
         Clamp { input: self, lo, hi }
     }
+    fn translate(self, offset: Vec3) -> Translate<Self> { Translate { input: self, offset }}
 }
 
 impl<F: Field> FieldExt for F {}
@@ -96,5 +108,15 @@ mod tests {
             scaled.sample(Vec3::new(10.0, 0.0, 0.0)),
             raw.sample(Vec3::new(5.0, 0.0, 0.0)),
         );
+    }
+
+    #[test]
+    fn translate_shifts_the_domain() {
+        let raw = ValueNoise::new(1);
+        let shifted = ValueNoise::new(1).translate(Vec3::new(5.0, 0.0, 0.0));
+        assert_eq!(
+            shifted.sample(Vec3::new(10.0, 0.0, 0.0)),
+            raw.sample(Vec3::new(15.0, 0.0, 0.0)),
+        )
     }
 }
