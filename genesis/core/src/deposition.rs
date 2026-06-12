@@ -60,6 +60,39 @@ impl DepositionRule for Accrete {
     }
 }
 
+pub struct Layer {
+    pub material: MaterialId,
+    pub thickness: FieldId,
+}
+
+pub struct LayeredDeposition {
+    pub layers: Vec<Layer>,
+}
+
+impl DepositionRule for LayeredDeposition {
+    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> Deposit {
+        let col = Vec3::new(p.x, 0.0, p.z);
+        let mut base = 0.0;
+        let mut material = MaterialId::NONE;
+        let mut found = false;
+        for layer in &self.layers {
+            let top = base + env.sample(layer.thickness, col);
+            if !found && state.deposited < top {
+                material = layer.material;
+                found = true;
+            }
+            base = top;
+        }
+        let total = base;
+        let remaining = total - state.deposited;
+        if remaining <= 0.0 {
+            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+        }
+        state.deposited += cell_height;
+        Deposit { solidity: (remaining / cell_height).min(1.0), material }
+    }
+}
+
 pub struct Strata {
     pub thickness: FieldId,
     pub bedrock: MaterialId,
@@ -117,5 +150,24 @@ mod tests {
         assert_eq!(fields.solidity.get(0, 3, 0), 1.0);
         assert_eq!(fields.solidity.get(0, 4, 0), 0.5);
         assert_eq!(fields.solidity.get(0, 5, 0), 0.0);
+    }
+
+    #[test]
+    fn layers_stack_bottom_to_top() {
+        let mut env = Environment::new();
+        let t = env.add(Constant(3.0));
+        let rule = LayeredDeposition { layers: vec![
+            Layer{ material: MaterialId(1), thickness: t },
+            Layer{ material: MaterialId(2), thickness: t },
+            Layer{ material: MaterialId(3), thickness: t },
+        ]};
+        let f = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 12, 1);
+        assert_eq!(f.material.get(0, 1, 0), MaterialId(1));
+        assert_eq!(f.material.get(0, 4, 0), MaterialId(2));
+        assert_eq!(f.material.get(0, 7, 0), MaterialId(3));
+        assert_eq!(f.material.get(0, 9, 0), MaterialId::NONE);
+        assert_eq!(f.solidity.get(0, 8, 0), 1.0);
+        assert_eq!(f.solidity.get(0, 9, 0), 0.0);
+        assert_eq!(f.solidity.get(0, 0, 0), 1.0);
     }
 }
