@@ -1,17 +1,13 @@
-use genesis_core::{deposit_region, Accrete, Constant, Environment, FieldExt, Generator, Layer, LayeredDeposition, MaterialId, Region, ThermalErosion, ValueNoise, Vec3, World, WorldBounds, Strata, Material, MaterialCatalogue};
+use genesis_core::{Constant, Draped, Environment, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
 use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
 
 fn main() -> std::io::Result<()> {
-    let mut env = Environment::new();
-
-    let hills = ValueNoise::new(3).frequency(0.0125).octaves(5, 2.0, 0.5);
-    let ridges = ValueNoise::new(4).frequency(0.025).octaves(4, 2.0, 0.5);
-
     let mut catalogue = MaterialCatalogue::new();
-    let bedrock = catalogue.add(Material { name: "bedrock".into(), hardness: 0.95, colour: [60, 60, 60]});
-    let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128]});
-    let stone = catalogue.add(Material { name: "stone".into(), hardness: 0.70, colour: [130, 130, 130]});
-    let soil = catalogue.add(Material { name: "soil".into(), hardness: 0.20, colour: [110, 80, 50]});
+    let bedrock = catalogue.add(Material { name: "bedrock".into(), hardness: 0.95, colour: [60, 60, 60] });
+    let scree = catalogue.add(Material { name: "scree".into(), hardness: 0.30, colour: [150, 140, 120] });
+    let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128] });
+    let stone = catalogue.add(Material { name: "stone".into(), hardness: 0.70, colour: [130, 130, 130] });
+    let soil = catalogue.add(Material { name: "soil".into(), hardness: 0.20, colour: [110, 80, 50] });
 
     let mut env = Environment::new();
     let bedrock_t = env.add(
@@ -27,11 +23,24 @@ fn main() -> std::io::Result<()> {
         ValueNoise::new(7).frequency(0.03).octaves(3, 2.0, 0.5).scale(4.0).add(Constant(1.0))
     );
 
-    let rule = LayeredDeposition { layers: vec![
-        Layer { material: bedrock, thickness: bedrock_t },
-        Layer { material: stone, thickness: stone_t },
-        Layer { material: soil, thickness: soil_t },
-    ]};
+    let landform = env.add(
+        ValueNoise::new(5).frequency(0.012).octaves(3, 2.0, 0.5).scale(50.0).add(Constant(20.0))
+    );
+
+    let rule = LayeredDeposition {
+        layers: vec![
+            Layer::fixed(bedrock, bedrock_t),
+            Layer::fixed(stone, stone_t),
+            Layer::selected(Draped {
+                over: scree,
+                under: soil,
+                max_depth: 4.0,
+                gentle: 0.3,
+                steep: 0.6,
+            }, soil_t),
+        ],
+        landform,
+    };
 
     let generator = Generator::new(rule)
         .with_erosion(ThermalErosion {
@@ -41,13 +50,27 @@ fn main() -> std::io::Result<()> {
             sediment,
         });
 
+    let mut max_slope = 0.0f64;
+    for z in (0..256).step_by(4) {
+        for x in (0..256).step_by(4) {
+            let (xf, zf) = (x as f64, z as f64);
+            let e = 6.0;
+            let h = |a: f64, b: f64| [bedrock_t, stone_t, soil_t].iter()
+                .map(|&id| env.sample(id, Vec3::new(a, 0.0, b))).sum::<f64>();
+            let gx = (h(xf + e, zf) - h(xf - e, zf)) / (2.0 * e);
+            let gz = (h(xf, zf + e) - h(xf, zf - e)) / (2.0 * e);
+            max_slope = max_slope.max((gx * gx + gz * gz).sqrt());
+        }
+    }
+    eprintln!("max slope ≈ {max_slope:.3}");
+
     let world = World {
         environment: env,
         generator,
-        bounds: WorldBounds { min_y: 0.0, max_y: 128.0 }
+        bounds: WorldBounds { min_y: 0.0, max_y: 128.0 },
     };
 
-    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: 1.0, nx: 256, nz: 256});
+    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: 1.0, nx: 256, nz: 256 });
 
     write_pgm(&render_vertical_slice(&fields.solidity, 256, 128, 1.0, 0.0), "terrain.pgm")?;
 

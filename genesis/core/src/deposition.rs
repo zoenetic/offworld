@@ -1,4 +1,4 @@
-use crate::{Environment, FieldSet, FieldId, MaterialId, Vec3};
+use crate::{Environment, FieldId, FieldSet, MaterialId, Vec3};
 
 pub struct Deposit {
     pub solidity: f64,
@@ -8,6 +8,49 @@ pub struct Deposit {
 #[derive(Default)]
 pub struct ColumnState {
     pub deposited: f64,
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct ColumnContext {
+    pub slope: f64,
+}
+
+pub trait MaterialSelector {
+    fn select(&self, ctx: &ColumnContext, depth: f64) -> MaterialId;
+}
+
+pub struct Fixed(pub MaterialId);
+
+impl MaterialSelector for Fixed {
+    fn select(&self, _: &ColumnContext, _: f64) -> MaterialId { self.0 }
+}
+
+pub struct BySlope {
+    pub gentle: MaterialId,
+    pub steep: MaterialId,
+    pub threshold: f64,
+}
+
+impl MaterialSelector for BySlope {
+    fn select(&self, ctx: &ColumnContext, _: f64) -> MaterialId {
+        if ctx.slope >= self.threshold { self.steep } else { self.gentle }
+    }
+}
+
+pub struct Draped {
+    pub over: MaterialId,
+    pub under: MaterialId,
+    pub max_depth: f64,
+    pub gentle: f64,
+    pub steep: f64,
+}
+
+impl MaterialSelector for Draped {
+    fn select(&self, ctx: &ColumnContext, depth: f64) -> MaterialId {
+        let t = ((ctx.slope - self.gentle) / (self.steep - self.gentle)).clamp(0.0, 1.0);
+        let scree_depth = self.max_depth * t;
+        if depth <= scree_depth { self.over } else { self.under }
+    }
 }
 
 pub fn deposit_region(
@@ -52,7 +95,7 @@ impl DepositionRule for Accrete {
         let target = env.sample(self.thickness, Vec3::new(p.x, 0.0, p.z));
         let remaining = target - state.deposited;
         if remaining <= 0.0 {
-            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+            return Deposit { solidity: 0.0, material: MaterialId::NONE };
         }
         let solidity = (remaining / cell_height).min(1.0);
         state.deposited += cell_height;
@@ -61,33 +104,59 @@ impl DepositionRule for Accrete {
 }
 
 pub struct Layer {
-    pub material: MaterialId,
+    pub material: Box<dyn MaterialSelector>,
     pub thickness: FieldId,
+}
+
+impl Layer {
+    pub fn fixed(material: MaterialId, thickness: FieldId) -> Self {
+        Self { material: Box::new(Fixed(material)), thickness }
+    }
+
+    pub fn selected(material: impl MaterialSelector + 'static, thickness: FieldId) -> Self {
+        Self { material: Box::new(material), thickness }
+    }
 }
 
 pub struct LayeredDeposition {
     pub layers: Vec<Layer>,
+    pub landform: FieldId,
+}
+
+impl LayeredDeposition {
+    pub fn surface_height(&self, env: &Environment, x: f64, z: f64) -> f64 {
+        self.layers.iter().map(|l| env.sample(l.thickness, Vec3::new(x, 0.0, x))).sum()
+    }
+
+    fn context(&self, env: &Environment, x: f64, z: f64) -> ColumnContext {
+        let e = 4.0;
+        let sample = |a: f64, b: f64| env.sample(self.landform, Vec3::new(a, 0.0, b));
+        let hx = (sample(x + e, z) - sample(x - e, z)) / (2.0 * e);
+        let hz = (sample(x, z + e) - sample(x, z - e)) / (2.0 * e);
+        ColumnContext { slope: (hx * hx + hz * hz).sqrt() }
+    }
 }
 
 impl DepositionRule for LayeredDeposition {
     fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> Deposit {
         let col = Vec3::new(p.x, 0.0, p.z);
+
         let mut base = 0.0;
-        let mut material = MaterialId::NONE;
-        let mut found = false;
+        let mut selector: Option<&dyn MaterialSelector> = None;
         for layer in &self.layers {
             let top = base + env.sample(layer.thickness, col);
-            if !found && state.deposited < top {
-                material = layer.material;
-                found = true;
+            if selector.is_none() && state.deposited < top {
+                selector = Some(layer.material.as_ref());
             }
             base = top;
         }
         let total = base;
         let remaining = total - state.deposited;
         if remaining <= 0.0 {
-            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+            return Deposit { solidity: 0.0, material: MaterialId::NONE };
         }
+        let ctx = self.context(env, p.x, p.z);
+        let material = selector.map_or(MaterialId::NONE, |s| s.select(&ctx, remaining)); // ← + remaining
         state.deposited += cell_height;
         Deposit { solidity: (remaining / cell_height).min(1.0), material }
     }
@@ -107,7 +176,7 @@ impl DepositionRule for Strata {
         let target = env.sample(self.thickness, Vec3::new(p.x, 0.0, p.z));
         let remaining = target - state.deposited;
         if remaining <= 0.0 {
-            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+            return Deposit { solidity: 0.0, material: MaterialId::NONE };
         }
         let solidity = (remaining / cell_height).min(1.0);
         let from_bottom = state.deposited;
@@ -156,11 +225,15 @@ mod tests {
     fn layers_stack_bottom_to_top() {
         let mut env = Environment::new();
         let t = env.add(Constant(3.0));
-        let rule = LayeredDeposition { layers: vec![
-            Layer{ material: MaterialId(1), thickness: t },
-            Layer{ material: MaterialId(2), thickness: t },
-            Layer{ material: MaterialId(3), thickness: t },
-        ]};
+        let landform = env.add(Constant(1.0));
+        let rule = LayeredDeposition {
+            layers: vec![
+                Layer::fixed(MaterialId(1), t),
+                Layer::fixed(MaterialId(2), t),
+                Layer::fixed(MaterialId(3), t),
+            ],
+            landform,
+        };
         let f = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 12, 1);
         assert_eq!(f.material.get(0, 1, 0), MaterialId(1));
         assert_eq!(f.material.get(0, 4, 0), MaterialId(2));
