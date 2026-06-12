@@ -26,14 +26,35 @@ impl<F: Field> Field for Scale<F> {
     }
 }
 
-pub struct Add<A, B> {
-    pub a: A,
-    pub b: B,
-}
+pub struct Add<A, B> { pub a: A, pub b: B, }
 
 impl<A: Field, B: Field> Field for Add<A, B> {
     fn sample(&self, p: Vec3) -> f64 {
         self.a.sample(p) + self.b.sample(p)
+    }
+}
+
+pub struct Mul<A, B> { pub a: A, pub b: B, }
+
+impl<A: Field, B: Field> Field for Mul<A, B> {
+    fn sample(&self, p: Vec3) -> f64 {
+        self.a.sample(p) * self.b.sample(p)
+    }
+}
+
+pub struct Min<A, B> { pub a: A, b: B, }
+
+impl<A: Field, B: Field> Field for Min<A, B> {
+    fn sample(&self, p: Vec3) -> f64 {
+        self.a.sample(p).min(self.b.sample(p))
+    }
+}
+
+pub struct Max<A, B> { pub a: A, b: B, }
+
+impl<A: Field, B: Field> Field for Max<A, B> {
+    fn sample(&self, p: Vec3) -> f64 {
+        self.a.sample(p).max(self.b.sample(p))
     }
 }
 
@@ -60,6 +81,26 @@ impl<F: Field> Field for Translate<F> {
     }
 }
 
+pub struct Octaves<F> {
+    pub input: F,
+    pub octaves: u32,
+    pub lacunarity: f64,
+    pub gain: f64,
+}
+
+impl<F: Field> Field for Octaves<F> {
+    fn sample(&self, p: Vec3) -> f64 {
+        let (mut freq, mut amp, mut sum, mut norm) = (1.0, 1.0, 0.0, 0.0);
+        for _ in 0..self.octaves {
+            sum += amp * self.input.sample(Vec3::new(p.x * freq, p.y * freq, p.z * freq));
+            norm += amp;
+            freq *= self.lacunarity;
+            amp *= self.gain;
+        }
+        sum / norm
+    }
+}
+
 pub trait FieldExt: Field + Sized {
     fn frequency(self, factor: f64) -> Frequency<Self> {
         Frequency { input: self, factor }
@@ -70,10 +111,16 @@ pub trait FieldExt: Field + Sized {
     fn add<B: Field>(self, other: B) -> Add<Self, B> {
         Add { a: self, b: other }
     }
+    fn mul<B: Field>(self, other: B) -> Mul<Self, B> { Mul { a: self, b: other } }
+    fn min<B: Field>(self, other: B) -> Min<Self, B> { Min { a: self, b: other } }
+    fn max<B: Field>(self, other: B) -> Max<Self, B> { Max { a: self, b: other } }
     fn clamp(self, lo: f64, hi: f64) -> Clamp<Self> {
         Clamp { input: self, lo, hi }
     }
     fn translate(self, offset: Vec3) -> Translate<Self> { Translate { input: self, offset }}
+    fn octaves(self, octaves: u32, lacunarity: f64, gain: f64) -> Octaves<Self> {
+        Octaves { input: self, octaves, lacunarity, gain }
+    }
 }
 
 impl<F: Field> FieldExt for F {}
@@ -118,5 +165,20 @@ mod tests {
             shifted.sample(Vec3::new(10.0, 0.0, 0.0)),
             raw.sample(Vec3::new(15.0, 0.0, 0.0)),
         )
+    }
+
+    #[test]
+    fn single_octave_equals_base() {
+        let base = ValueNoise::new(1).frequency((0.1));
+        let fbm = ValueNoise::new(1).frequency((0.1)).octaves(1, 2.0, 0.5);
+        let p = Vec3::new(3.0, 1.0, 2.0);
+        assert_eq!(fbm.sample(p), base.sample(p));
+    }
+
+    #[test]
+    fn min_and_max_select_per_point() {
+        let p = Vec3::new(0.0, 0.0, 0.0);
+        assert_eq!(Constant(0.2).max(Constant(0.8)).sample(p), 0.8);
+        assert_eq!(Constant(0.2).min(Constant(0.8)).sample(p), 0.2);
     }
 }

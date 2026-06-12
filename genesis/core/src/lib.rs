@@ -8,11 +8,13 @@ mod deposition;
 mod generate;
 mod world;
 mod material;
+mod fieldset;
 
 pub use combinators::{Frequency, Add, Clamp, Scale, FieldExt, Translate};
-pub use deposition::{ColumnState, DepositionRule, Accrete, deposit_region};
+pub use deposition::{ColumnState, DepositionRule, Accrete, deposit_region, Strata};
 pub use environment::{Environment, FieldId};
 pub use field::{Field, Constant};
+pub use fieldset::{FieldSet};
 pub use generate::{Generator};
 pub use geometry::{Vec3};
 pub use grid::{Grid, FieldGrid, bake};

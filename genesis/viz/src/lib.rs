@@ -1,4 +1,8 @@
-use genesis_core::{Field, Translate, Vec3};
+mod mesh;
+
+use genesis_core::{Field, Grid, MaterialId, Vec3};
+
+pub use mesh::{Mesh, mesh_blocky, mesh_smooth, write_ply};
 
 pub struct GreyImage {
     pub width: usize,
@@ -37,6 +41,43 @@ pub fn write_pgm(img: &GreyImage, path: &str) -> std::io::Result<()> {
     write!(f, "P5\n{} {}\n255\n", img.width, img.height)?;
     f.write_all(&img.pixels)?;
     Ok(())
+}
+
+pub struct ColourImage {
+    pub width: usize,
+    pub height: usize,
+    pub pixels: Vec<u8>,
+}
+
+pub fn write_ppm(img: &ColourImage, path: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut f = std::io::BufWriter::new(std::fs::File::create(path)?);
+    write!(f, "P6\n{} {}\n255\n", img.width, img.height)?;
+    f.write_all(&img.pixels)?;
+    Ok(())
+}
+
+pub fn render_material_slice(
+    material: &Grid<MaterialId>,
+    palette: impl Fn(MaterialId) -> [u8; 3],
+    width: usize,
+    height: usize,
+    scale: f64,
+    z: f64,
+) -> ColourImage {
+    let mut pixels = vec![0u8; width * height * 3];
+    for j in 0..height {
+        for i in 0..width {
+            let y = (height - 1 - j) as f64 * scale;
+            let m = material.nearest(Vec3::new(i as f64 * scale, y, z));
+            let [r, g, b] = palette(m);
+            let idx = (j * width + i) * 3;
+            pixels[idx] = r;
+            pixels[idx + 1] = g;
+            pixels[idx + 2] = b;
+        }
+    }
+    ColourImage { width, height, pixels }
 }
 
 #[cfg(test)]

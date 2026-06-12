@@ -22,3 +22,5 @@ result-*
 
 # --- genesis-viz ---
 *.pgm
+*.ply
+*.ppm

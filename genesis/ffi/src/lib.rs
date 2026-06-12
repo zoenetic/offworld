@@ -1,11 +1,11 @@
-use genesis_core::{Accrete, Environment, FieldExt, Generator, Region, ValueNoise, World, WorldBounds};
+use genesis_core::{Accrete, Environment, FieldExt, Generator, MaterialId, Region, ValueNoise, World, WorldBounds};
 
 fn demo_world() -> World {
     let mut env = Environment::new();
     let thickness = env.add(ValueNoise::new(1).frequency(0.02).scale(64.0));
     World {
         environment: env,
-        generator: Generator::new(Accrete { thickness }),
+        generator: Generator::new(Accrete { thickness, material: MaterialId(1) }),
         bounds: WorldBounds { min_y: 0.0, max_y: 128.0 },
     }
 }
@@ -28,14 +28,14 @@ pub unsafe extern "C" fn genesis_generate_solidity(
     out_len: usize,
 ) -> i32 {
     let world = demo_world();
-    let grid = world.generate(&Region { min_x, min_z, spacing, nx, nz});
+    let fields = world.generate(&Region { min_x, min_z, spacing, nx, nz});
 
-    if out.is_null() || out_len != grid.nx * grid.ny * grid.nz {
+    if out.is_null() || out_len != fields.solidity.nx * fields.solidity.ny * fields.solidity.nz {
         return 1;
     }
 
     let buf = unsafe { std::slice::from_raw_parts_mut(out, out_len) };
-    for (dst, &src) in buf.iter_mut().zip(grid.as_slice()) {
+    for (dst, &src) in buf.iter_mut().zip(fields.solidity.as_slice()) {
         *dst = src as f32;
     }
     0

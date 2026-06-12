@@ -1,28 +1,13 @@
-use crate::{Environment, FieldGrid, FieldId, Vec3};
+use crate::{Environment, FieldSet, FieldId, MaterialId, Vec3};
+
+pub struct Deposit {
+    pub solidity: f64,
+    pub material: MaterialId,
+}
 
 #[derive(Default)]
 pub struct ColumnState {
     pub deposited: f64,
-}
-
-pub trait DepositionRule {
-    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> f64;
-}
-
-pub struct Accrete {
-    pub thickness: FieldId,
-}
-
-impl DepositionRule for Accrete {
-    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> f64 {
-        let target = env.sample(self.thickness, Vec3::new(p.x, 0.0, p.z));
-        if state.deposited < target {
-            state.deposited += cell_height;
-            1.0
-        } else {
-            0.0
-        }
-    }
 }
 
 pub fn deposit_region(
@@ -33,8 +18,8 @@ pub fn deposit_region(
     nx: usize,
     ny: usize,
     nz: usize,
-) -> FieldGrid {
-    let mut grid = FieldGrid::new(origin, spacing, nx, ny, nz);
+) -> FieldSet {
+    let mut fields = FieldSet::new(origin, spacing, nx, ny, nz);
     for k in 0..nz {
         for i in 0..nx {
             let mut state = ColumnState::default();
@@ -44,12 +29,66 @@ pub fn deposit_region(
                     origin.y + j as f64 * spacing,
                     origin.z + k as f64 * spacing,
                 );
-                let solidity = rule.deposit(env, p, spacing, &mut state);
-                grid.set(i, j, k, solidity);
+                let d = rule.deposit(env, p, spacing, &mut state);
+                fields.solidity.set(i, j, k, d.solidity);
+                fields.material.set(i, j, k, d.material);
             }
         }
     }
-    grid
+    fields
+}
+
+pub trait DepositionRule {
+    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> Deposit;
+}
+
+pub struct Accrete {
+    pub thickness: FieldId,
+    pub material: MaterialId,
+}
+
+impl DepositionRule for Accrete {
+    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> Deposit {
+        let target = env.sample(self.thickness, Vec3::new(p.x, 0.0, p.z));
+        let remaining = target - state.deposited;
+        if remaining <= 0.0 {
+            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+        }
+        let solidity = (remaining / cell_height).min(1.0);
+        state.deposited += cell_height;
+        Deposit { solidity, material: self.material }
+    }
+}
+
+pub struct Strata {
+    pub thickness: FieldId,
+    pub bedrock: MaterialId,
+    pub stone: MaterialId,
+    pub soil: MaterialId,
+    pub bedrock_depth: f64,
+    pub soil_depth: f64,
+}
+
+impl DepositionRule for Strata {
+    fn deposit(&self, env: &Environment, p: Vec3, cell_height: f64, state: &mut ColumnState) -> Deposit {
+        let target = env.sample(self.thickness, Vec3::new(p.x, 0.0, p.z));
+        let remaining = target - state.deposited;
+        if remaining <= 0.0 {
+            return Deposit { solidity: 0.0, material: MaterialId::NONE }
+        }
+        let solidity = (remaining / cell_height).min(1.0);
+        let from_bottom = state.deposited;
+        let from_top = remaining;
+        let material = if from_bottom < self.bedrock_depth {
+            self.bedrock
+        } else if from_top <= self.soil_depth {
+            self.soil
+        } else {
+            self.stone
+        };
+        state.deposited += cell_height;
+        Deposit { solidity, material }
+    }
 }
 
 #[cfg(test)]
@@ -61,11 +100,22 @@ mod tests {
     fn accretes_to_target_height() {
         let mut env = Environment::new();
         let thickness = env.add(Constant(5.0));
-        let rule = Accrete { thickness };
-        let grid = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 10, 1);
+        let rule = Accrete { thickness, material: MaterialId(1) };
+        let fields = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 10, 1);
         for j in 0..10 {
             let want = if j < 5 { 1.0 } else { 0.0 };
-            assert_eq!(grid.get(0, j, 0), want, "cell {j}");
+            assert_eq!(fields.solidity.get(0, j, 0), want, "cell {j}");
         }
+    }
+
+    #[test]
+    fn boundary_cell_is_partially_filled() {
+        let mut env = Environment::new();
+        let thickness = env.add(Constant(4.5));
+        let rule = Accrete { thickness, material: MaterialId(1) };
+        let fields = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 6, 1);
+        assert_eq!(fields.solidity.get(0, 3, 0), 1.0);
+        assert_eq!(fields.solidity.get(0, 4, 0), 0.5);
+        assert_eq!(fields.solidity.get(0, 5, 0), 0.0);
     }
 }
