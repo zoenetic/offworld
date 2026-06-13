@@ -30,6 +30,11 @@ impl Environment {
     }
 }
 
+#[derive(Default, Clone, Copy)]
+pub struct EnvironmentSample {
+    pub slope: f64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

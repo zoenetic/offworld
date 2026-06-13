@@ -1,8 +1,4 @@
-use crate::{deposit_region, DepositionRule, Environment, FieldSet, Vec3};
-
-pub trait Erosion {
-    fn erode(&self, fields: &mut FieldSet, env: &Environment);
-}
+use crate::{deposit_region, DepositionRule, Environment, Erosion, FieldSet, Vec3};
 
 pub struct NoErosion;
 

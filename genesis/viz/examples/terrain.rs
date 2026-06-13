@@ -1,5 +1,13 @@
-use genesis_core::{Constant, Draped, Environment, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
+use genesis_core::{Constant, Draped, Environment, Field, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
 use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
+
+const SIZE: usize = 512;
+const HEIGHT: usize = 256;
+const SPACING: f64 = 1.0;
+
+fn uplift() -> impl Field {
+    ValueNoise::new(30).frequency(0.003).octaves(2, 2.0, 0.5).scale(80.0)
+}
 
 fn main() -> std::io::Result<()> {
     let mut catalogue = MaterialCatalogue::new();
@@ -14,16 +22,17 @@ fn main() -> std::io::Result<()> {
 
     let mut env = Environment::new();
     let bedrock_t = env.add(
-        ValueNoise::new(10).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0))
+        ValueNoise::new(11).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0))
     );
     let stone_t = env.add(
-        ValueNoise::new(5).frequency(0.012).octaves(5, 2.0, 0.5).scale(50.0)
+        ValueNoise::new(15).frequency(0.012).octaves(5, 2.0, 0.5).scale(50.0)
             .add(ValueNoise::new(8).frequency(0.05).octaves(2, 2.0, 0.5).scale(6.0))
             .max(ValueNoise::new(9).frequency(0.02).octaves(3, 2.0, 0.5).scale(40.0))
+            .add(uplift())
             .add(Constant(10.0))
     );
     let soil_t = env.add(
-        ValueNoise::new(7)
+        ValueNoise::new(17)
             .frequency(0.03)
             .octaves(3, 2.0, 0.5)
             .scale(4.0)
@@ -31,19 +40,19 @@ fn main() -> std::io::Result<()> {
     );
 
     let landform = env.add(
-        ValueNoise::new(5)
+        ValueNoise::new(15)
             .frequency(0.012)
             .octaves(3, 2.0, 0.5)
             .scale(50.0)
+            .add(uplift())
             .add(Constant(20.0))
     );
 
     let tectonic = env.add(
-        ValueNoise::new(2)
+        ValueNoise::new(12)
             .frequency(0.006)
             .octaves(2, 2.0, 0.5)
-            .scale(20.0)
-            .add(Constant(-40.0))
+            .add(Constant(-10.0))
     );
 
     let rule = LayeredDeposition {
@@ -76,9 +85,9 @@ fn main() -> std::io::Result<()> {
     println!("Calculating max_slope...");
 
     let mut max_slope = 0.0f64;
-    for z in (0..512).step_by(4) {
-        for x in (0..512).step_by(4) {
-            let (xf, zf) = (x as f64, z as f64);
+    for z in (0..SIZE).step_by(4) {
+        for x in (0..SIZE).step_by(4) {
+            let (xf, zf) = (x as f64 * SPACING, z as f64 * SPACING);
             let e = 6.0;
             let h = |a: f64, b: f64| [bedrock_t, stone_t, soil_t].iter()
                 .map(|&id| env.sample(id, Vec3::new(a, 0.0, b))).sum::<f64>();
@@ -91,16 +100,16 @@ fn main() -> std::io::Result<()> {
     let world = World {
         environment: env,
         generator,
-        bounds: WorldBounds { min_y: 0.0, max_y: 256.0 },
+        bounds: WorldBounds { min_y: 0.0, max_y: HEIGHT as f64 * SPACING },
     };
 
     println!("Generating world...");
 
-    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: 1.0, nx: 512, nz: 512 });
+    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: SPACING, nx: SIZE, nz: SIZE });
 
     println!("Writing solidity slice...");
 
-    write_pgm(&render_vertical_slice(&fields.solidity, 512, 256, 1.0, 0.0), "solidity.pgm")?;
+    write_pgm(&render_vertical_slice(&fields.solidity, SIZE, HEIGHT, SPACING, 0.0), "solidity.pgm")?;
 
     let palette = |m: MaterialId| {
         if m == MaterialId::NONE {
@@ -112,7 +121,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Writing strata slice...");
 
-    write_ppm(&render_material_slice(&fields.material, palette, 512, 256, 1.0, 0.0), "strata.ppm")?;
+    write_ppm(&render_material_slice(&fields.material, palette, SIZE, HEIGHT, SPACING, 0.0), "strata.ppm")?;
 
     println!("Generating blocky mesh...");
 

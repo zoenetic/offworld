@@ -1,5 +1,8 @@
-use crate::{Environment, Erosion, FieldSet, MaterialId};
+use crate::{Environment, FieldSet, MaterialId};
 
+pub trait Erosion {
+    fn erode(&self, fields: &mut FieldSet, env: &Environment);
+}
 pub struct ThermalErosion {
     pub iterations: u32,
     pub talus: f64,
