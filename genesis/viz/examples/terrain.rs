@@ -15,6 +15,7 @@ fn main() -> std::io::Result<()> {
     let limestone = catalogue.add(Material { name: "limestone".into(), hardness: 0.95, colour: [70, 70, 70] });
     let sand = catalogue.add(Material { name: "sand".into(), hardness: 0.10, colour: [210, 190, 140] });
     let sandstone = catalogue.add(Material { name: "sandstone".into(), hardness: 0.95, colour: [90, 90, 90] });
+    let silt = catalogue.add(Material { name: "silt".into(), hardness: 0.05, colour: [55, 45, 35] });
     let shale = catalogue.add(Material { name: "shale".into(), hardness: 0.95, colour: [80, 80, 80] });
     let scree = catalogue.add(Material { name: "scree".into(), hardness: 0.30, colour: [150, 140, 120] });
     let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128] });
@@ -23,16 +24,17 @@ fn main() -> std::io::Result<()> {
     let soil = catalogue.add(Material { name: "soil".into(), hardness: 0.20, colour: [110, 80, 50] });
 
     let mut env = Environment::new();
+
     let bedrock_t = env.add(
         ValueNoise::new(11).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0))
     );
+
     let stone_t = env.add(
-        ValueNoise::new(15).frequency(0.012).octaves(5, 2.0, 0.5).scale(50.0)
-            .add(ValueNoise::new(8).frequency(0.05).octaves(2, 2.0, 0.5).scale(6.0))
-            .max(ValueNoise::new(9).frequency(0.02).octaves(3, 2.0, 0.5).scale(40.0))
+        GradientNoise::new(15).frequency(0.012).octaves(4, 2.0, 0.5).scale(50.0) // broad hills only
             .add(uplift())
             .add(Constant(10.0))
     );
+
     let soil_t = env.add(
         ValueNoise::new(17)
             .frequency(0.03)
@@ -91,7 +93,7 @@ fn main() -> std::io::Result<()> {
     let generator = Generator::new(rule)
         .with_erosion(HydraulicErosion {
             seed: 1,
-            droplets: 200_000,
+            droplets: 10_000,
             inertia: 0.05,
             capacity: 4.0,
             min_slope: 0.01,
@@ -100,7 +102,9 @@ fn main() -> std::io::Result<()> {
             evaporation: 0.02,
             gravity: 4.0,
             max_lifetime: 30,
-            sediment,
+            sediment: silt,
+            erode_radius: 3,
+            scale: 4,
         });
 
     println!("Calculating max_slope...");

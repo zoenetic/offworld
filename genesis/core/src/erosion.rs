@@ -16,15 +16,14 @@ pub struct HydraulicErosion {
     pub gravity: f64,
     pub max_lifetime: u32,
     pub sediment: MaterialId,
+    pub erode_radius: i32,
+    pub scale: usize,
 }
 
-impl Erosion for HydraulicErosion {
-    fn erode(&self, fields: &mut FieldSet, _env: &Environment) {
-        let nx = fields.solidity.nx;
-        let nz = fields.solidity.nz;
+impl HydraulicErosion {
+    fn simulate_droplets(&self, height: &mut [f64], nx: usize, nz: usize) {
         let idx = |i: usize, k: usize| k * nx + i;
-        let mut height = extract_heightmap(fields);
-
+        let brush = make_brush(self.erode_radius);
         let mut rng = Rng(self.seed);
         for _ in 0..self.droplets {
             let mut px = rng.unit() * (nx - 1) as f64;
@@ -81,7 +80,13 @@ impl Erosion for HydraulicErosion {
                 } else {
                     let dig = ((cap - sediment) * self.erode_rate).min(-delta);
                     sediment += dig;
-                    change(-dig);
+                    for &(bx, bz, w) in &brush {
+                        let bi = cx as i64 + bx as i64;
+                        let bk = cz as i64 + bz as i64;
+                        if bi >= 0 && bk >= 0 && (bi as usize) < nx && (bk as usize) < nz {
+                            height[(bk as usize) * nx + (bi as usize)] -= dig * w;
+                        }
+                    }
                 }
 
                 speed = (speed * speed - delta * self.gravity).max(0.0).sqrt();
@@ -89,8 +94,44 @@ impl Erosion for HydraulicErosion {
                 if water < 1e-4 { break; }
             }
         }
+    }
+}
 
-        reimpose_heightmap(fields, &height, self.sediment);
+impl Erosion for HydraulicErosion {
+    fn erode(&self, fields: &mut FieldSet, _env: &Environment) {
+        let nx = fields.solidity.nx;
+        let nz = fields.solidity.nz;
+        let mut fine = extract_heightmap(fields);
+        let f = self.scale.max(1);
+
+        if f == 1 {
+            self.simulate_droplets(&mut fine, nx, nz);
+        } else {
+            let (cnx, cnz) = (nx / f, nz / f);
+            let mut coarse = vec![0.0; cnx * cnz];
+            for ck in 0..cnz {
+                for ci in 0..cnx {
+                    let mut sum = 0.0;
+                    for dz in 0..f {
+                        for dx in 0..f {
+                            sum += fine[(ck * f + dz) * nx + (ci * f + dx)];
+                        }
+                    }
+                    coarse[ck * cnx + ci] = sum / (f * f) as f64;
+                }
+            }
+
+            let before = coarse.clone();
+            self.simulate_droplets(&mut coarse, cnx, cnz);
+
+            for k in 0..nz {
+                for i in 0..nx {
+                    fine[k * nx + i] += sample_delta(&coarse, &before, cnx, cnz, i as f64 / f as f64, k as f64 / f as f64);
+                }
+            }
+        }
+
+        reimpose_heightmap(fields, &fine, self.sediment);
     }
 }
 
@@ -185,6 +226,25 @@ fn extract_heightmap(fields: &FieldSet) -> Vec<f64> {
     height
 }
 
+fn make_brush(radius: i32) -> Vec<(i32, i32, f64)> {
+    let mut brush = Vec::new();
+    let mut total = 0.0;
+    for dz in -radius..=radius {
+        for dx in -radius..=radius {
+            let dist = ((dx * dx + dz * dz) as f64).sqrt();
+            if dist <= radius as f64 {
+                let w = 1.0 - dist / (radius as f64 + 1.0);
+                brush.push((dx, dz, w));
+                total += w;
+            }
+        }
+    }
+    for b in brush.iter_mut() {
+        b.2 /= total;
+    }
+    brush
+}
+
 fn reimpose_heightmap(fields: &mut FieldSet, height: &[f64], sediment: MaterialId) {
     let (nx, ny, nz) = (fields.solidity.nx, fields.solidity.ny, fields.solidity.nz);
     for k in 0..nz {
@@ -201,6 +261,18 @@ fn reimpose_heightmap(fields: &mut FieldSet, height: &[f64], sediment: MaterialI
             }
         }
     }
+}
+
+fn sample_delta(after: &[f64], before: &[f64], cnx: usize, cnz: usize, cx: f64, cz: f64) -> f64 {
+    let x0 = (cx.floor() as usize).min(cnx - 1);
+    let z0 = (cz.floor() as usize).min(cnz - 1);
+    let x1 = (x0 + 1).min(cnx - 1);
+    let z1 = (z0 + 1).min(cnz - 1);
+    let (fx, fz) = (cx - x0 as f64, cz - z0 as f64);
+    let d = |i: usize, k: usize| after[k * cnx + i] - before[k * cnx + i];
+    let top = d(x0, z0) * (1.0 - fx) + d(x1, z0) * fx;
+    let bot = d(x0, z1) * (1.0 - fx) + d(x1, z1) * fx;
+    top * (1.0 - fz) + bot * fz
 }
 
 #[cfg(test)]
