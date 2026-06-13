@@ -1,8 +1,99 @@
-use crate::{Environment, FieldSet, MaterialId};
+use crate::{Environment, FieldSet, MaterialId, Rng};
 
 pub trait Erosion {
     fn erode(&self, fields: &mut FieldSet, env: &Environment);
 }
+
+pub struct HydraulicErosion {
+    pub seed: u64,
+    pub droplets: u32,
+    pub inertia: f64,
+    pub capacity: f64,
+    pub min_slope: f64,
+    pub erode_rate: f64,
+    pub deposit_rate: f64,
+    pub evaporation: f64,
+    pub gravity: f64,
+    pub max_lifetime: u32,
+    pub sediment: MaterialId,
+}
+
+impl Erosion for HydraulicErosion {
+    fn erode(&self, fields: &mut FieldSet, _env: &Environment) {
+        let nx = fields.solidity.nx;
+        let nz = fields.solidity.nz;
+        let idx = |i: usize, k: usize| k * nx + i;
+        let mut height = extract_heightmap(fields);
+
+        let mut rng = Rng(self.seed);
+        for _ in 0..self.droplets {
+            let mut px = rng.unit() * (nx - 1) as f64;
+            let mut pz = rng.unit() * (nz - 1) as f64;
+            let (mut dx, mut dz) = (0.0f64, 0.0f64);
+            let (mut speed, mut water, mut sediment) = (1.0f64, 1.0f64, 0.0f64);
+
+            for _ in 0..self.max_lifetime {
+                let (cx, cz) = (px.floor() as usize, pz.floor() as usize);
+                let (fx, fz) = (px - cx as f64, pz - cz as f64);
+
+                let (nw, ne, sw, se) = (
+                    height[idx(cx, cz)], height[idx(cx + 1, cz)],
+                    height[idx(cx, cz + 1)], height[idx(cx + 1, cz + 1)],
+                );
+                let h_old = nw * (1.0 - fx) * (1.0 - fz) + ne * fx * (1.0 - fz) + sw * (1.0 - fx) * fz + se * fx * fz;
+                let gx = (ne - nw) * (1.0 - fz) + (se - sw) * fz;
+                let gz = (sw - nw) * (1.0 - fx) + (se - ne) * fx;
+
+                dx = dx * self.inertia - gx * (1.0 - self.inertia);
+                dz = dz * self.inertia - gz * (1.0 - self.inertia);
+                let len = (dx * dx + dz * dz).sqrt();
+                if len < 1e-9 { break; }
+                dx /= len;
+                dz /= len;
+                px += dx;
+                pz += dz;
+                if px < 0.0 || pz < 0.0 || px >= (nx - 1) as f64 || pz >= (nz - 1) as f64 { break; }
+
+                let (ncx, ncz) = (px.floor() as usize, pz.floor() as usize);
+                let (nfx, nfz) = (px - ncx as f64, pz - ncz as f64);
+                let h_new = {
+                    let (nw, ne, sw, se) = (
+                        height[idx(ncx, ncz)], height[idx(ncx + 1, ncz)],
+                        height[idx(ncx, ncz + 1)], height[idx(ncx + 1, ncz + 1)],
+                    );
+                    nw * (1.0 - nfx) * (1.0 - nfz) + ne * nfx * (1.0 - nfz) + sw * (1.0 - nfx) * nfz + se * nfx * nfz
+                };
+                let delta = h_new - h_old;
+
+                let cap = (-delta).max(self.min_slope) * speed * water * self.capacity;
+
+                let mut change = |amount: f64| {
+                    height[idx(cx, cz)] += amount * (1.0 - fx) * (1.0 - fz);
+                    height[idx(cx + 1, cz)] += amount * fx * (1.0 - fz);
+                    height[idx(cx, cz + 1)] += amount * (1.0 - fx) * fz;
+                    height[idx(cx + 1, cz + 1)] += amount * fx * fz;
+                };
+
+                if sediment > cap || delta > 0.0 {
+                    let drop = if delta > 0.0 { delta.min(sediment) } else { (sediment - cap) * self.deposit_rate };
+                    sediment -= drop;
+                    change(drop);
+                } else {
+                    let dig = ((cap - sediment) * self.erode_rate).min(-delta);
+                    sediment += dig;
+                    change(-dig);
+                }
+
+                speed = (speed * speed - delta * self.gravity).max(0.0).sqrt();
+                water *= 1.0 - self.evaporation;
+                if water < 1e-4 { break; }
+            }
+        }
+
+        reimpose_heightmap(fields, &height, self.sediment);
+    }
+}
+
 pub struct ThermalErosion {
     pub iterations: u32,
     pub talus: f64,
@@ -77,6 +168,35 @@ impl Erosion for ThermalErosion {
                     } else if fields.material.get(i, j, k) == MaterialId::NONE {
                         fields.material.set(i, j, k, self.sediment);
                     }
+                }
+            }
+        }
+    }
+}
+
+fn extract_heightmap(fields: &FieldSet) -> Vec<f64> {
+    let (nx, ny, nz) = (fields.solidity.nx, fields.solidity.ny, fields.solidity.nz);
+    let mut height = vec![0.0; nx * nz];
+    for k in 0..nz {
+        for i in 0..nx {
+            height[k * nx + i] = (0..ny).map(|j| fields.solidity.get(i, j, k)).sum();
+        }
+    }
+    height
+}
+
+fn reimpose_heightmap(fields: &mut FieldSet, height: &[f64], sediment: MaterialId) {
+    let (nx, ny, nz) = (fields.solidity.nx, fields.solidity.ny, fields.solidity.nz);
+    for k in 0..nz {
+        for i in 0..nx {
+            let col = height[k * nx + i];
+            for j in 0..ny {
+                let sol = (col - j as f64).clamp(0.0, 1.0);
+                fields.solidity.set(i, j, k, sol);
+                if sol == 0.0 {
+                    fields.material.set(i, j, k, MaterialId::NONE);
+                } else if fields.material.get(i, j, k) == MaterialId::NONE {
+                    fields.material.set(i, j, k, sediment);
                 }
             }
         }

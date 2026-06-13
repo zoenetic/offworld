@@ -1,4 +1,4 @@
-use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, GradientNoise, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
+use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, GradientNoise, HydraulicErosion, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ValueNoise, Vec3, World, WorldBounds};
 use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
 
 const SIZE: usize = 1024;
@@ -89,10 +89,17 @@ fn main() -> std::io::Result<()> {
     };
 
     let generator = Generator::new(rule)
-        .with_erosion(ThermalErosion {
-            iterations: 30,
-            talus: 0.0,
-            rate: 0.3,
+        .with_erosion(HydraulicErosion {
+            seed: 1,
+            droplets: 200_000,
+            inertia: 0.05,
+            capacity: 4.0,
+            min_slope: 0.01,
+            erode_rate: 0.3,
+            deposit_rate: 0.3,
+            evaporation: 0.02,
+            gravity: 4.0,
+            max_lifetime: 30,
             sediment,
         });
 
