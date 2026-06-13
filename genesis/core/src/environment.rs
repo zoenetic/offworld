@@ -33,6 +33,9 @@ impl Environment {
 #[derive(Default, Clone, Copy)]
 pub struct EnvironmentSample {
     pub slope: f64,
+    pub elevation: f64,
+    pub temperature: f64,
+    pub moisture: f64,
 }
 
 #[cfg(test)]

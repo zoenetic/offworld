@@ -59,6 +59,9 @@ pub struct LayeredDeposition {
     pub mantle: Layer,
     pub landform: FieldId,
     pub tectonic: FieldId,
+    pub sea_level_temp: f64,
+    pub lapse_rate: f64,
+    pub moisture: FieldId,
 }
 
 impl LayeredDeposition {
@@ -72,10 +75,16 @@ impl LayeredDeposition {
 
     fn environment_sample(&self, env: &Environment, x: f64, z: f64) -> EnvironmentSample {
         let e = 4.0;
-        let sample = |a: f64, b: f64| env.sample(self.landform, Vec3::new(a, 0.0, b));
-        let hx = (sample(x + e, z) - sample(x - e, z)) / (2.0 * e);
-        let hz = (sample(x, z + e) - sample(x, z - e)) / (2.0 * e);
-        EnvironmentSample { slope: (hx * hx + hz * hz).sqrt() }
+        let s = |a: f64, b: f64| env.sample(self.landform, Vec3::new(a, 0.0, b));
+        let hx = (s(x + e, z) - s(x - e, z)) / (2.0 * e);
+        let hz = (s(x, z + e) - s(x, z - e)) / (2.0 * e);
+        let elevation = s(x, z);
+        EnvironmentSample {
+            slope: (hx * hx + hz * hz).sqrt(),
+            elevation,
+            temperature: self.sea_level_temp - self.lapse_rate * elevation,
+            moisture: env.sample(self.moisture, Vec3::new(x, 0.0, z)),
+        }
     }
 }
 
@@ -138,6 +147,9 @@ mod tests {
             mantle: Layer::fixed(MaterialId(3), t),
             landform,
             tectonic,
+            sea_level_temp: 20.0,
+            lapse_rate: 0.2,
+            moisture: env.add(Constant(1.0)),
         };
         let f = deposit_region(&env, &rule, Vec3::new(0.0, 0.0, 0.0), 1.0, 1, 12, 1);
         assert_eq!(f.material.get(0, 1, 0), MaterialId(1));

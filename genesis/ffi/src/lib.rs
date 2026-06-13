@@ -22,6 +22,9 @@ fn demo_world() -> World<LayeredDeposition> {
         mantle: Layer::fixed(MaterialId(3), soil_t),
         landform,
         tectonic,
+        sea_level_temp: 20.0,
+        lapse_rate: 0.2,
+        moisture: env.add(Constant(0.0)),
     };
 
     World {

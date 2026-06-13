@@ -23,5 +23,5 @@ pub use geometry::Vec3;
 pub use grid::{bake, FieldGrid, Grid};
 pub use material::{Material, MaterialCatalogue, MaterialId};
 pub use noise::ValueNoise;
-pub use selector::{BySlope, Draped, Fixed, MaterialSelector};
+pub use selector::{ByMoisture, BySlope, Draped, Fixed, MaterialSelector, Snowy};
 pub use world::{Region, World, WorldBounds};

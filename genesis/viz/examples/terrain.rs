@@ -1,7 +1,7 @@
-use genesis_core::{Constant, Draped, Environment, Field, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
+use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
 use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
 
-const SIZE: usize = 512;
+const SIZE: usize = 1024;
 const HEIGHT: usize = 256;
 const SPACING: f64 = 1.0;
 
@@ -13,10 +13,12 @@ fn main() -> std::io::Result<()> {
     let mut catalogue = MaterialCatalogue::new();
     let bedrock = catalogue.add(Material { name: "bedrock".into(), hardness: 0.95, colour: [60, 60, 60] });
     let limestone = catalogue.add(Material { name: "limestone".into(), hardness: 0.95, colour: [70, 70, 70] });
+    let sand = catalogue.add(Material { name: "sand".into(), hardness: 0.10, colour: [210, 190, 140] });
     let sandstone = catalogue.add(Material { name: "sandstone".into(), hardness: 0.95, colour: [90, 90, 90] });
     let shale = catalogue.add(Material { name: "shale".into(), hardness: 0.95, colour: [80, 80, 80] });
     let scree = catalogue.add(Material { name: "scree".into(), hardness: 0.30, colour: [150, 140, 120] });
     let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128] });
+    let snow = catalogue.add(Material { name: "snow".into(), hardness: 0.10, colour: [235, 240, 250] });
     let stone = catalogue.add(Material { name: "stone".into(), hardness: 0.70, colour: [130, 130, 130] });
     let soil = catalogue.add(Material { name: "soil".into(), hardness: 0.20, colour: [110, 80, 50] });
 
@@ -55,6 +57,8 @@ fn main() -> std::io::Result<()> {
             .add(Constant(-10.0))
     );
 
+    let moisture = env.add(ValueNoise::new(40).frequency(0.004).octaves(3, 2.0, 0.5));
+
     let rule = LayeredDeposition {
         beds: vec![
             Layer::fixed(bedrock, bedrock_t),
@@ -63,15 +67,25 @@ fn main() -> std::io::Result<()> {
             Layer::fixed(sandstone, env.add(Constant(10.0))),
             Layer::fixed(stone, stone_t),
         ],
-        mantle: Layer::selected(Draped {
-            over: scree,
-            under: soil,
-            max_depth: 4.0,
-            gentle: 0.3,
-            steep: 0.6,
-        }, soil_t),
+        mantle: Layer::selected(
+            Snowy {
+                snow,
+                below: Box::new(Draped {
+                    over: scree,
+                    under: Box::new(ByMoisture { wet: soil, dry: sand, threshold: 0.4 }),
+                    max_depth: 4.0,
+                    gentle: 0.3,
+                    steep: 0.6,
+                }),
+                freezing: 0.0,
+            },
+            soil_t,
+        ),
         landform,
         tectonic,
+        moisture,
+        sea_level_temp: 20.0,
+        lapse_rate: 0.2,
     };
 
     let generator = Generator::new(rule)
