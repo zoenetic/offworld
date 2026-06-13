@@ -1,5 +1,43 @@
 use crate::{Field, Vec3};
 
+pub struct GradientNoise {
+    pub seed: u64,
+}
+
+impl GradientNoise {
+    pub const fn new(seed: u64) -> Self {
+        Self { seed }
+    }
+}
+
+const GRADIENTS: [(f64, f64, f64); 12] = [
+    (1.0, 1.0, 0.0), (-1.0, 1.0, 0.0), (1.0, -1.0, 0.0), (-1.0, -1.0, 0.0),
+    (1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (1.0, 0.0, -1.0), (-1.0, 0.0, -1.0),
+    (0.0, 1.0, 1.0), (0.0, -1.0, 1.0), (0.0, 1.0, -1.0), (0.0, -1.0, -1.0),
+];
+
+impl Field for GradientNoise {
+    fn sample(&self, p: Vec3) -> f64 {
+        let (x0, y0, z0) = (p.x.floor(), p.y.floor(), p.z.floor());
+        let (xi, yi, zi) = (x0 as i32, y0 as i32, z0 as i32);
+        let (fx, fy, fz) = (p.x - x0, p.y - y0, p.z - z0);
+        let (u, v, w) = (fade(fx), fade(fy), fade(fz));
+
+        let dot = |dx: i32, dy: i32, dz: i32| {
+            let (gx, gy, gz) = GRADIENTS[(hash(xi + dx, yi + dy, zi + dz, self.seed) % 12) as usize];
+            gx * (fx - dx as f64) + gy * (fy - dy as f64) + gz * (fz - dz as f64)
+        };
+
+        let x00 = lerp(dot(0, 0, 0), dot(1, 0, 0), u);
+        let x10 = lerp(dot(0, 1, 0), dot(1, 1, 0), u);
+        let x01 = lerp(dot(0, 0, 1), dot(1, 0, 1), u);
+        let x11 = lerp(dot(0, 1, 1), dot(1, 1, 1), u);
+        let value = lerp(lerp(x00, x10, v), lerp(x01, x11, v), w);
+
+        (value * 0.5 + 0.5).clamp(0.0, 1.0)
+    }
+}
+
 pub struct ValueNoise {
     pub seed: u64,
 }
@@ -133,5 +171,24 @@ mod tests {
         let far = frac_low(10_000, 10_000);
         assert!((origin - 0.1).abs() < 1.5e-3, "origin low tail: {origin}");
         assert!((far - 0.1).abs() < 1.5e-3, "far low tail: {far}");
+    }
+
+    #[test]
+    fn gradient_is_half_at_lattice_points() {
+        let n = GradientNoise::new(7);
+        for p in [Vec3::new(0.0, 0.0, 0.0), Vec3::new(3.0, -2.0, 5.0)] {
+            assert!((n.sample(p) - 0.5).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn gradient_deterministic_and_in_range() {
+        let n = GradientNoise::new(1);
+        for i in 0..2000 {
+            let f = i as f64 * 0.137;
+            let p = Vec3::new(f, -f * 0.5, f * 0.25);
+            assert_eq!(n.sample(p), n.sample(p));
+            assert!((0.0..=1.0).contains(&n.sample(p)));
+        }
     }
 }

@@ -1,12 +1,12 @@
-use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
+use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, GradientNoise, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ThermalErosion, ValueNoise, Vec3, World, WorldBounds};
 use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
 
 const SIZE: usize = 1024;
-const HEIGHT: usize = 256;
+const HEIGHT: usize = 384;
 const SPACING: f64 = 1.0;
 
 fn uplift() -> impl Field {
-    ValueNoise::new(30).frequency(0.003).octaves(2, 2.0, 0.5).scale(80.0)
+    ValueNoise::new(30).frequency(0.003).octaves(2, 2.0, 0.5).scale(160.0)
 }
 
 fn main() -> std::io::Result<()> {
@@ -42,7 +42,7 @@ fn main() -> std::io::Result<()> {
     );
 
     let landform = env.add(
-        ValueNoise::new(15)
+        GradientNoise::new(15)
             .frequency(0.012)
             .octaves(3, 2.0, 0.5)
             .scale(50.0)
@@ -85,7 +85,7 @@ fn main() -> std::io::Result<()> {
         tectonic,
         moisture,
         sea_level_temp: 20.0,
-        lapse_rate: 0.2,
+        lapse_rate: 0.125,
     };
 
     let generator = Generator::new(rule)
