@@ -4,6 +4,9 @@ use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertic
 fn main() -> std::io::Result<()> {
     let mut catalogue = MaterialCatalogue::new();
     let bedrock = catalogue.add(Material { name: "bedrock".into(), hardness: 0.95, colour: [60, 60, 60] });
+    let limestone = catalogue.add(Material { name: "limestone".into(), hardness: 0.95, colour: [70, 70, 70] });
+    let sandstone = catalogue.add(Material { name: "sandstone".into(), hardness: 0.95, colour: [90, 90, 90] });
+    let shale = catalogue.add(Material { name: "shale".into(), hardness: 0.95, colour: [80, 80, 80] });
     let scree = catalogue.add(Material { name: "scree".into(), hardness: 0.30, colour: [150, 140, 120] });
     let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128] });
     let stone = catalogue.add(Material { name: "stone".into(), hardness: 0.70, colour: [130, 130, 130] });
@@ -20,26 +23,46 @@ fn main() -> std::io::Result<()> {
             .add(Constant(10.0))
     );
     let soil_t = env.add(
-        ValueNoise::new(7).frequency(0.03).octaves(3, 2.0, 0.5).scale(4.0).add(Constant(1.0))
+        ValueNoise::new(7)
+            .frequency(0.03)
+            .octaves(3, 2.0, 0.5)
+            .scale(4.0)
+            .add(Constant(1.0))
     );
 
     let landform = env.add(
-        ValueNoise::new(5).frequency(0.012).octaves(3, 2.0, 0.5).scale(50.0).add(Constant(20.0))
+        ValueNoise::new(5)
+            .frequency(0.012)
+            .octaves(3, 2.0, 0.5)
+            .scale(50.0)
+            .add(Constant(20.0))
+    );
+
+    let tectonic = env.add(
+        ValueNoise::new(2)
+            .frequency(0.006)
+            .octaves(2, 2.0, 0.5)
+            .scale(20.0)
+            .add(Constant(-40.0))
     );
 
     let rule = LayeredDeposition {
-        layers: vec![
+        beds: vec![
             Layer::fixed(bedrock, bedrock_t),
+            Layer::fixed(limestone, env.add(Constant(10.0))),
+            Layer::fixed(shale, env.add(Constant(8.0))),
+            Layer::fixed(sandstone, env.add(Constant(10.0))),
             Layer::fixed(stone, stone_t),
-            Layer::selected(Draped {
-                over: scree,
-                under: soil,
-                max_depth: 4.0,
-                gentle: 0.3,
-                steep: 0.6,
-            }, soil_t),
         ],
+        mantle: Layer::selected(Draped {
+            over: scree,
+            under: soil,
+            max_depth: 4.0,
+            gentle: 0.3,
+            steep: 0.6,
+        }, soil_t),
         landform,
+        tectonic,
     };
 
     let generator = Generator::new(rule)
@@ -50,9 +73,11 @@ fn main() -> std::io::Result<()> {
             sediment,
         });
 
+    println!("Calculating max_slope...");
+
     let mut max_slope = 0.0f64;
-    for z in (0..256).step_by(4) {
-        for x in (0..256).step_by(4) {
+    for z in (0..512).step_by(4) {
+        for x in (0..512).step_by(4) {
             let (xf, zf) = (x as f64, z as f64);
             let e = 6.0;
             let h = |a: f64, b: f64| [bedrock_t, stone_t, soil_t].iter()
@@ -62,17 +87,20 @@ fn main() -> std::io::Result<()> {
             max_slope = max_slope.max((gx * gx + gz * gz).sqrt());
         }
     }
-    eprintln!("max slope ≈ {max_slope:.3}");
 
     let world = World {
         environment: env,
         generator,
-        bounds: WorldBounds { min_y: 0.0, max_y: 128.0 },
+        bounds: WorldBounds { min_y: 0.0, max_y: 256.0 },
     };
 
-    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: 1.0, nx: 256, nz: 256 });
+    println!("Generating world...");
 
-    write_pgm(&render_vertical_slice(&fields.solidity, 256, 128, 1.0, 0.0), "terrain.pgm")?;
+    let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: 1.0, nx: 512, nz: 512 });
+
+    println!("Writing solidity slice...");
+
+    write_pgm(&render_vertical_slice(&fields.solidity, 512, 256, 1.0, 0.0), "solidity.pgm")?;
 
     let palette = |m: MaterialId| {
         if m == MaterialId::NONE {
@@ -82,12 +110,24 @@ fn main() -> std::io::Result<()> {
         }
     };
 
-    write_ppm(&render_material_slice(&fields.material, palette, 256, 128, 1.0, 0.0), "strata.ppm")?;
+    println!("Writing strata slice...");
+
+    write_ppm(&render_material_slice(&fields.material, palette, 512, 256, 1.0, 0.0), "strata.ppm")?;
+
+    println!("Generating blocky mesh...");
 
     let blocky_mesh = mesh_blocky(&fields.solidity, &fields.material, 0.5, palette);
-    let smooth_mesh = mesh_smooth(&fields.solidity, &fields.material, 0.5, palette);
+
+    println!("Writing blocky mesh...");
 
     write_ply(&blocky_mesh, "world_blocky.ply")?;
+
+    println!("Generating smooth mesh...");
+
+    let smooth_mesh = mesh_smooth(&fields.solidity, &fields.material, 0.5, palette);
+
+    println!("Writing smooth mesh...");
+
     write_ply(&smooth_mesh, "world_smooth.ply")?;
 
     Ok(())

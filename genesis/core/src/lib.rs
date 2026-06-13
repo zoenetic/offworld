@@ -12,7 +12,7 @@ mod fieldset;
 mod erosion;
 
 pub use combinators::{Add, Clamp, FieldExt, Frequency, Scale, Translate};
-pub use deposition::{deposit_region, Accrete, BySlope, ColumnState, DepositionRule, Draped, Layer, LayeredDeposition, Strata};
+pub use deposition::{deposit_region, BySlope, ColumnState, DepositionRule, Draped, Layer, LayeredDeposition};
 pub use environment::{Environment, FieldId};
 pub use erosion::ThermalErosion;
 pub use field::{Constant, Field};

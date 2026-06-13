@@ -1,11 +1,32 @@
-use genesis_core::{Accrete, Environment, FieldExt, Generator, MaterialId, Region, ValueNoise, World, WorldBounds};
+use genesis_core::{
+    Constant, Environment, FieldExt, Generator, Layer, LayeredDeposition,
+    MaterialId, Region, ValueNoise, World, WorldBounds,
+};
 
-fn demo_world() -> World {
+fn demo_world() -> World<LayeredDeposition> {
     let mut env = Environment::new();
-    let thickness = env.add(ValueNoise::new(1).frequency(0.02).scale(64.0));
+
+    let bedrock_t = env.add(Constant(8.0));
+    let stone_t = env.add(
+        ValueNoise::new(1).frequency(0.02).octaves(4, 2.0, 0.5).scale(60.0).add(Constant(10.0)),
+    );
+    let soil_t = env.add(Constant(4.0));
+    let landform = env.add(Constant(0.0));
+    let tectonic = env.add(Constant(0.0));
+
+    let rule = LayeredDeposition {
+        beds: vec![
+            Layer::fixed(MaterialId(1), bedrock_t),
+            Layer::fixed(MaterialId(2), stone_t),
+        ],
+        mantle: Layer::fixed(MaterialId(3), soil_t),
+        landform,
+        tectonic,
+    };
+
     World {
         environment: env,
-        generator: Generator::new(Accrete { thickness, material: MaterialId(1) }),
+        generator: Generator::new(rule),
         bounds: WorldBounds { min_y: 0.0, max_y: 128.0 },
     }
 }
@@ -28,7 +49,7 @@ pub unsafe extern "C" fn genesis_generate_solidity(
     out_len: usize,
 ) -> i32 {
     let world = demo_world();
-    let fields = world.generate(&Region { min_x, min_z, spacing, nx, nz});
+    let fields = world.generate(&Region { min_x, min_z, spacing, nx, nz });
 
     if out.is_null() || out_len != fields.solidity.nx * fields.solidity.ny * fields.solidity.nz {
         return 1;
