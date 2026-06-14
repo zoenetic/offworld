@@ -1,42 +1,85 @@
 use genesis_core::{
-    Constant, Environment, FieldExt, Generator, Layer, LayeredDeposition,
-    MaterialId, Region, ValueNoise, World, WorldBounds,
+    ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, GradientNoise, Layer, LayeredDeposition,
+    MaterialId, Region, Snowy, ValueNoise, World, WorldBounds,
 };
 
-fn demo_world() -> World<LayeredDeposition> {
+const BEDROCK: MaterialId = MaterialId(1);
+const LIMESTONE: MaterialId = MaterialId(2);
+const SHALE: MaterialId = MaterialId(3);
+const SANDSTONE: MaterialId = MaterialId(4);
+const STONE: MaterialId = MaterialId(5);
+const SCREE: MaterialId = MaterialId(6);
+const SOIL: MaterialId = MaterialId(7);
+const SAND: MaterialId = MaterialId(8);
+const SNOW: MaterialId = MaterialId(9);
+
+fn uplift() -> impl Field {
+    ValueNoise::new(30).frequency(0.003).octaves(2, 2.0, 0.5).scale(160.0)
+}
+
+fn offworld() -> World<LayeredDeposition> {
     let mut env = Environment::new();
 
-    let bedrock_t = env.add(Constant(8.0));
-    let stone_t = env.add(
-        ValueNoise::new(1).frequency(0.02).octaves(4, 2.0, 0.5).scale(60.0).add(Constant(10.0)),
+    let bedrock_t = env.add(
+        ValueNoise::new(11).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0)),
     );
-    let soil_t = env.add(Constant(4.0));
-    let landform = env.add(Constant(0.0));
-    let tectonic = env.add(Constant(0.0));
+    let stone_t = env.add(
+        GradientNoise::new(15).frequency(0.012).octaves(4, 2.0, 0.5).scale(50.0)
+            .add(uplift())
+            .add(Constant(10.0)),
+    );
+    let soil_t = env.add(
+        ValueNoise::new(17).frequency(0.03).octaves(3, 2.0, 0.5).scale(4.0).add(Constant(1.0)),
+    );
+    let landform = env.add(
+        GradientNoise::new(15).frequency(0.012).octaves(3, 2.0, 0.5).scale(50.0)
+            .add(uplift())
+            .add(Constant(20.0)),
+    );
+    let tectonic = env.add(
+        ValueNoise::new(12).frequency(0.006).octaves(2, 2.0, 0.5).scale(20.0).add(Constant(-10.0)),
+    );
+    let moisture = env.add(ValueNoise::new(40).frequency(0.004).octaves(3, 2.0, 0.5));
 
     let rule = LayeredDeposition {
         beds: vec![
-            Layer::fixed(MaterialId(1), bedrock_t),
-            Layer::fixed(MaterialId(2), stone_t),
+            Layer::fixed(BEDROCK, bedrock_t),
+            Layer::fixed(LIMESTONE, env.add(Constant(10.0))),
+            Layer::fixed(SHALE, env.add(Constant(8.0))),
+            Layer::fixed(SANDSTONE, env.add(Constant(10.0))),
+            Layer::fixed(STONE, stone_t),
         ],
-        mantle: Layer::fixed(MaterialId(3), soil_t),
+        mantle: Layer::selected(
+            Snowy {
+                snow: SNOW,
+                below: Box::new(Draped {
+                    over: SCREE,
+                    under: Box::new(ByMoisture { wet: SOIL, dry: SAND, threshold: 0.4 }),
+                    max_depth: 4.0,
+                    gentle: 0.3,
+                    steep: 0.6,
+                }),
+                freezing: 0.0,
+            },
+            soil_t,
+        ),
         landform,
         tectonic,
+        moisture,
         sea_level_temp: 20.0,
-        lapse_rate: 0.2,
-        moisture: env.add(Constant(0.0)),
+        lapse_rate: 0.125,
     };
 
     World {
         environment: env,
         generator: Generator::new(rule),
-        bounds: WorldBounds { min_y: 0.0, max_y: 128.0 },
+        bounds: WorldBounds { min_y: 0.0, max_y: 320.0 },
     }
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn genesis_region_len(spacing: f64, nx: usize, nz: usize) -> usize {
-    let world = demo_world();
+    let world = offworld();
     let ny = (world.bounds.height() / spacing).ceil() as usize;
     nx * ny * nz
 }
@@ -52,7 +95,7 @@ pub unsafe extern "C" fn genesis_generate(
     out_material: *mut u16,
     out_len: usize,
 ) -> i32 {
-    let world = demo_world();
+    let world = offworld();
     let fields = world.generate(&Region { min_x, min_z, spacing, nx, nz });
     let expected = fields.solidity.nx * fields.solidity.ny * fields.solidity.nz;
     if out_solidity.is_null() || out_material.is_null() || out_len != expected {
