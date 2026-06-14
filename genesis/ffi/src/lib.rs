@@ -42,25 +42,30 @@ pub extern "C" fn genesis_region_len(spacing: f64, nx: usize, nz: usize) -> usiz
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn genesis_generate_solidity(
+pub unsafe extern "C" fn genesis_generate(
     min_x: f64,
     min_z: f64,
     spacing: f64,
     nx: usize,
     nz: usize,
-    out: *mut f32,
+    out_solidity: *mut f32,
+    out_material: *mut u16,
     out_len: usize,
 ) -> i32 {
     let world = demo_world();
     let fields = world.generate(&Region { min_x, min_z, spacing, nx, nz });
-
-    if out.is_null() || out_len != fields.solidity.nx * fields.solidity.ny * fields.solidity.nz {
+    let expected = fields.solidity.nx * fields.solidity.ny * fields.solidity.nz;
+    if out_solidity.is_null() || out_material.is_null() || out_len != expected {
         return 1;
     }
-
-    let buf = unsafe { std::slice::from_raw_parts_mut(out, out_len) };
-    for (dst, &src) in buf.iter_mut().zip(fields.solidity.as_slice()) {
+    let sol = unsafe { std::slice::from_raw_parts_mut(out_solidity, out_len) };
+    for (dst, &src) in sol.iter_mut().zip(fields.solidity.as_slice()) {
         *dst = src as f32;
     }
+    let mat = unsafe { std::slice::from_raw_parts_mut(out_material, out_len) };
+    for (dst, &src) in mat.iter_mut().zip(fields.material.as_slice()) {
+        *dst = src.0;
+    }
+
     0
 }

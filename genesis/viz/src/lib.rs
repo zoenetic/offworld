@@ -2,7 +2,7 @@ mod mesh;
 
 use genesis_core::{Field, Grid, MaterialId, Vec3};
 
-pub use mesh::{Mesh, mesh_blocky, mesh_smooth, write_ply};
+pub use mesh::{mesh_blocky, mesh_smooth, write_ply, Mesh};
 
 pub struct GreyImage {
     pub width: usize,
@@ -20,6 +20,13 @@ pub fn render_field_slice(field: &impl Field, width: usize, height: usize, scale
         }
     }
     GreyImage { width, height, pixels }
+}
+
+pub fn render_heightmap(height: &[f64], w: usize, h: usize) -> GreyImage {
+    let (lo, hi) = height.iter().fold((f64::MAX, f64::MIN), |(lo, hi), &v| (lo.min(v), hi.max(v)));
+    let range = (hi - lo).max(1e-9);
+    let pixels = height.iter().map(|&v| (((v - lo) / range) * 255.0) as u8).collect();
+    GreyImage { width: w, height: h, pixels }
 }
 
 pub fn render_vertical_slice(field: &impl Field, width: usize, height: usize, scale: f64, z: f64) -> GreyImage {
@@ -83,7 +90,7 @@ pub fn render_material_slice(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use genesis_core::{Constant, ValueNoise, FieldExt};
+    use genesis_core::{Constant, FieldExt, ValueNoise};
 
     #[test]
     fn renders_expected_dimensions() {

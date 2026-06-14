@@ -1,9 +1,16 @@
-use genesis_core::{ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator, GradientNoise, HydraulicErosion, Layer, LayeredDeposition, Material, MaterialCatalogue, MaterialId, Region, Snowy, ValueNoise, Vec3, World, WorldBounds};
-use genesis_viz::{mesh_blocky, mesh_smooth, render_material_slice, render_vertical_slice, write_pgm, write_ply, write_ppm};
+use genesis_core::{
+    extract_heightmap, ByMoisture, Constant, Draped, Environment, Field, FieldExt, Generator,
+    GradientNoise, HydraulicErosion, Layer, LayeredDeposition, Material, MaterialCatalogue,
+    MaterialId, Region, Snowy, ValueNoise, World, WorldBounds,
+};
+use genesis_viz::{
+    mesh_blocky, mesh_smooth, render_heightmap, render_material_slice, render_vertical_slice,
+    write_pgm, write_ply, write_ppm,
+};
 
-const SIZE: usize = 1024;
-const HEIGHT: usize = 384;
-const SPACING: f64 = 1.0;
+const SIZE: usize = 1024; // nx, nz — horizontal extent in cells
+const HEIGHT: usize = 384; // ny — vertical extent in cells
+const SPACING: f64 = 1.0; // world units per cell
 
 fn uplift() -> impl Field {
     ValueNoise::new(30).frequency(0.003).octaves(2, 2.0, 0.5).scale(160.0)
@@ -18,7 +25,6 @@ fn main() -> std::io::Result<()> {
     let silt = catalogue.add(Material { name: "silt".into(), hardness: 0.05, colour: [55, 45, 35] });
     let shale = catalogue.add(Material { name: "shale".into(), hardness: 0.95, colour: [80, 80, 80] });
     let scree = catalogue.add(Material { name: "scree".into(), hardness: 0.30, colour: [150, 140, 120] });
-    let sediment = catalogue.add(Material { name: "sediment".into(), hardness: 0.10, colour: [194, 178, 128] });
     let snow = catalogue.add(Material { name: "snow".into(), hardness: 0.10, colour: [235, 240, 250] });
     let stone = catalogue.add(Material { name: "stone".into(), hardness: 0.70, colour: [130, 130, 130] });
     let soil = catalogue.add(Material { name: "soil".into(), hardness: 0.20, colour: [110, 80, 50] });
@@ -26,39 +32,24 @@ fn main() -> std::io::Result<()> {
     let mut env = Environment::new();
 
     let bedrock_t = env.add(
-        ValueNoise::new(11).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0))
+        ValueNoise::new(11).frequency(0.006).octaves(4, 2.0, 0.5).scale(16.0).add(Constant(12.0)),
     );
-
     let stone_t = env.add(
         GradientNoise::new(15).frequency(0.012).octaves(4, 2.0, 0.5).scale(50.0) // broad hills only
             .add(uplift())
-            .add(Constant(10.0))
+            .add(Constant(10.0)),
     );
-
     let soil_t = env.add(
-        ValueNoise::new(17)
-            .frequency(0.03)
-            .octaves(3, 2.0, 0.5)
-            .scale(4.0)
-            .add(Constant(1.0))
+        ValueNoise::new(17).frequency(0.03).octaves(3, 2.0, 0.5).scale(4.0).add(Constant(1.0)),
     );
-
     let landform = env.add(
-        GradientNoise::new(15)
-            .frequency(0.012)
-            .octaves(3, 2.0, 0.5)
-            .scale(50.0)
+        GradientNoise::new(15).frequency(0.012).octaves(3, 2.0, 0.5).scale(50.0)
             .add(uplift())
-            .add(Constant(20.0))
+            .add(Constant(20.0)),
     );
-
     let tectonic = env.add(
-        ValueNoise::new(12)
-            .frequency(0.006)
-            .octaves(2, 2.0, 0.5)
-            .add(Constant(-10.0))
+        ValueNoise::new(12).frequency(0.006).octaves(2, 2.0, 0.5).scale(20.0).add(Constant(-10.0)),
     );
-
     let moisture = env.add(ValueNoise::new(40).frequency(0.004).octaves(3, 2.0, 0.5));
 
     let rule = LayeredDeposition {
@@ -90,37 +81,25 @@ fn main() -> std::io::Result<()> {
         lapse_rate: 0.125,
     };
 
-    let generator = Generator::new(rule)
-        .with_erosion(HydraulicErosion {
-            seed: 1,
-            droplets: 10_000,
-            inertia: 0.05,
-            capacity: 4.0,
-            min_slope: 0.01,
-            erode_rate: 0.3,
-            deposit_rate: 0.3,
-            evaporation: 0.02,
-            gravity: 4.0,
-            max_lifetime: 30,
-            sediment: silt,
-            erode_radius: 3,
-            scale: 4,
-        });
+    // Erosion lives in the generator, so erode() applies `scale`: scale 4 erodes a
+    // SIZE/4 = 256² coarse grid, then upsamples the delta, so channels read at block scale.
+    let hydraulic = HydraulicErosion {
+        seed: 1,
+        droplets: 65_000, // ~1 per cell of the 256² coarse grid
+        inertia: 0.05,
+        capacity: 8.0,
+        min_slope: 0.01,
+        erode_rate: 0.3,
+        deposit_rate: 0.3,
+        evaporation: 0.01,
+        gravity: 4.0,
+        max_lifetime: 64,
+        sediment: silt,
+        erode_radius: 3,
+        scale: 4,
+    };
 
-    println!("Calculating max_slope...");
-
-    let mut max_slope = 0.0f64;
-    for z in (0..SIZE).step_by(4) {
-        for x in (0..SIZE).step_by(4) {
-            let (xf, zf) = (x as f64 * SPACING, z as f64 * SPACING);
-            let e = 6.0;
-            let h = |a: f64, b: f64| [bedrock_t, stone_t, soil_t].iter()
-                .map(|&id| env.sample(id, Vec3::new(a, 0.0, b))).sum::<f64>();
-            let gx = (h(xf + e, zf) - h(xf - e, zf)) / (2.0 * e);
-            let gz = (h(xf, zf + e) - h(xf, zf - e)) / (2.0 * e);
-            max_slope = max_slope.max((gx * gx + gz * gz).sqrt());
-        }
-    }
+    let generator = Generator::new(rule).with_erosion(hydraulic);
 
     let world = World {
         environment: env,
@@ -129,39 +108,36 @@ fn main() -> std::io::Result<()> {
     };
 
     println!("Generating world...");
-
     let fields = world.generate(&Region { min_x: 0.0, min_z: 0.0, spacing: SPACING, nx: SIZE, nz: SIZE });
-
-    println!("Writing solidity slice...");
-
-    write_pgm(&render_vertical_slice(&fields.solidity, SIZE, HEIGHT, SPACING, 0.0), "solidity.pgm")?;
 
     let palette = |m: MaterialId| {
         if m == MaterialId::NONE {
-            [135, 206, 235]
+            [135, 206, 235] // air → sky blue
         } else {
-            catalogue.get(m).map_or([255, 0, 255], |mat| mat.colour) // truly unknown → magenta
+            catalogue.get(m).map_or([255, 0, 255], |mat| mat.colour) // unknown id → magenta
         }
     };
 
-    println!("Writing strata slice...");
+    // Every output below is a view of this one generated-and-eroded world.
 
+    println!("Writing top-down heightmap...");
+    let heightmap = extract_heightmap(&fields);
+    write_pgm(&render_heightmap(&heightmap, SIZE, SIZE), "heightmap.pgm")?;
+
+    println!("Writing solidity slice...");
+    write_pgm(&render_vertical_slice(&fields.solidity, SIZE, HEIGHT, SPACING, 0.0), "solidity.pgm")?;
+
+    println!("Writing strata slice...");
     write_ppm(&render_material_slice(&fields.material, palette, SIZE, HEIGHT, SPACING, 0.0), "strata.ppm")?;
 
     println!("Generating blocky mesh...");
-
     let blocky_mesh = mesh_blocky(&fields.solidity, &fields.material, 0.5, palette);
-
     println!("Writing blocky mesh...");
-
     write_ply(&blocky_mesh, "world_blocky.ply")?;
 
     println!("Generating smooth mesh...");
-
     let smooth_mesh = mesh_smooth(&fields.solidity, &fields.material, 0.5, palette);
-
     println!("Writing smooth mesh...");
-
     write_ply(&smooth_mesh, "world_smooth.ply")?;
 
     Ok(())

@@ -21,7 +21,7 @@ pub struct HydraulicErosion {
 }
 
 impl HydraulicErosion {
-    fn simulate_droplets(&self, height: &mut [f64], nx: usize, nz: usize) {
+    pub fn simulate_droplets(&self, height: &mut [f64], nx: usize, nz: usize) {
         let idx = |i: usize, k: usize| k * nx + i;
         let brush = make_brush(self.erode_radius);
         let mut rng = Rng(self.seed);
@@ -215,7 +215,7 @@ impl Erosion for ThermalErosion {
     }
 }
 
-fn extract_heightmap(fields: &FieldSet) -> Vec<f64> {
+pub fn extract_heightmap(fields: &FieldSet) -> Vec<f64> {
     let (nx, ny, nz) = (fields.solidity.nx, fields.solidity.ny, fields.solidity.nz);
     let mut height = vec![0.0; nx * nz];
     for k in 0..nz {
@@ -245,7 +245,7 @@ fn make_brush(radius: i32) -> Vec<(i32, i32, f64)> {
     brush
 }
 
-fn reimpose_heightmap(fields: &mut FieldSet, height: &[f64], sediment: MaterialId) {
+pub fn reimpose_heightmap(fields: &mut FieldSet, height: &[f64], sediment: MaterialId) {
     let (nx, ny, nz) = (fields.solidity.nx, fields.solidity.ny, fields.solidity.nz);
     for k in 0..nz {
         for i in 0..nx {

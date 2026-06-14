@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "offworld_genesis",
+  "version": "${version}",
+  "name": "Offworld Genesis",
+  "description": "Alien world gen",
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "kotlin",
+        "value": "dev.zoenetic.offworld.genesis.fabric.GenesisFabric"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.1.2",
+    "fabric-language-kotlin": ">=1.13.12"
+  }
+}

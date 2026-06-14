@@ -16,7 +16,7 @@ mod rng;
 pub use combinators::{Add, Clamp, FieldExt, Frequency, Scale, Translate};
 pub use deposition::{deposit_region, DepositionRule, Layer, LayeredDeposition};
 pub use environment::{Environment, EnvironmentSample, FieldId};
-pub use erosion::{Erosion, HydraulicErosion, ThermalErosion};
+pub use erosion::{extract_heightmap, reimpose_heightmap, Erosion, HydraulicErosion, ThermalErosion};
 pub use field::{Constant, Field};
 pub use fieldset::FieldSet;
 pub use generate::Generator;

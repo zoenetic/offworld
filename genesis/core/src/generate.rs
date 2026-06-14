@@ -3,7 +3,7 @@ use crate::{deposit_region, DepositionRule, Environment, Erosion, FieldSet, Vec3
 pub struct NoErosion;
 
 impl Erosion for NoErosion {
-    fn erode(&self, fields: &mut FieldSet, env: &Environment) {}
+    fn erode(&self, _fields: &mut FieldSet, _env: &Environment) {}
 }
 
 pub trait Carver {
@@ -13,7 +13,7 @@ pub trait Carver {
 pub struct NoCarve;
 
 impl Carver for NoCarve {
-    fn carve(&self, grid: &mut FieldSet, env: &Environment) {}
+    fn carve(&self, _grid: &mut FieldSet, _env: &Environment) {}
 }
 
 pub struct Generator<D> {
