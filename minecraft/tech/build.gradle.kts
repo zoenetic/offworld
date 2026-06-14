@@ -1,3 +1,3 @@
 plugins { base }
 
-base { archivesName.set("offworld-tech-common") }
+base { archivesName.set("offworld-tech") }

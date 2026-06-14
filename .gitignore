@@ -24,3 +24,6 @@ result-*
 *.pgm
 *.ply
 *.ppm
+
+# --- mcp ---
+.serena
