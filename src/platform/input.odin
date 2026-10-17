@@ -2,30 +2,14 @@ package platform
 
 import rl "vendor:raylib"
 
-Key :: enum {
-	W,
-	A,
-	S,
-	D,
-	Jump,
-	Crouch,
-}
-
-KEY_MAP := [Key]rl.KeyboardKey {
-	.W      = .W,
-	.A      = .A,
-	.S      = .S,
-	.D      = .D,
-	.Jump   = .SPACE,
-	.Crouch = .LEFT_SHIFT,
-}
+Key :: rl.KeyboardKey
 
 key_down :: proc(key: Key) -> bool {
-	return rl.IsKeyDown(KEY_MAP[key])
+	return rl.IsKeyDown(key)
 }
 
 key_pressed :: proc(key: Key) -> bool {
-	return rl.IsKeyPressed(KEY_MAP[key])
+	return rl.IsKeyPressed(key)
 }
 
 

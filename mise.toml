@@ -1,3 +1,16 @@
 [tools]
 "http:odin" = { version = "2026-10-16", url = "https://f001.backblazeb2.com/file/odin-binaries/nightly/odin-linux-amd64-nightly%2B{{ version }}.tar.gz", checksum = "sha256:d11f7ed1ed6e0efe83db36c70189e7603d38a57db79d375a45ba23ee830e710a" }
 "http:ols" = { version = "nightly-2026-10-12", url = "https://github.com/DanielGavin/ols/releases/download/nightly/ols-x86_64-unknown-linux-gnu.zip", checksum = "sha256:c8beb5de664b6a089a773cf6d3d2a67c6ea2d1d511840f8553ca46300b1afaf3", rename_exe = { "odinfmt-*" = "odinfmt", "ols-*" = "ols" } }
+
+[tasks.vet]
+run = "odin check src -vet"
+
+[tasks.test]
+run = "odin test tests -vet"
+
+[tasks.check]
+depends = ["vet", "test"]
+
+[tasks.dev]
+depends = ["check"]
+run = "odin run src -vet"

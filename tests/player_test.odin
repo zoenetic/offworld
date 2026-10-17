@@ -12,7 +12,7 @@ settles_on_ground :: proc(t: ^testing.T) {
 	p := settled_player(chunk, {4, 8, 4})
 	if !testing.expect(t, p.grounded, "setup: player never settled") do return
 	tick(&p, chunk, {}, 120)
-	w := world.GROUND_Y + player.PLAYER_RADIUS
+	w := world.GROUND_Y + player.RADIUS
 	a := p.position.y
 	b := p.grounded
 	v := p.velocity.y
@@ -129,6 +129,6 @@ max_fall_is_clamped :: proc(t: ^testing.T) {
 	for _ in 0 ..< 100 {
 		player.update(&p, chunk, {}, DT)
 		v := p.velocity.y
-		if !testing.expectf(t, v >= -player.MAX_FALL, "got %v, want <= %v", v, player.MAX_FALL) do return
+		if !testing.expectf(t, v >= -player.MAX_FALL_SPEED, "got %v, want <= %v", v, player.MAX_FALL_SPEED) do return
 	}
 }

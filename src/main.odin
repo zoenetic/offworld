@@ -35,13 +35,13 @@ main :: proc() {
 	platform.capture_mouse()
 
 	for !platform.should_close() {
-		frame := min(platform.frame_time(), MAX_FRAME_TIME)
-		delta := platform.mouse_delta()
-		p.yaw -= delta.x * player.SENSITIVITY
-		p.pitch -= delta.y * player.SENSITIVITY
-		p.pitch = clamp(p.pitch, -1.55, 1.55)
+		frame_dt := min(platform.frame_time(), MAX_FRAME_TIME)
+		mouse := platform.mouse_delta()
+		p.yaw -= mouse.x * player.SENSITIVITY
+		p.pitch -= mouse.y * player.SENSITIVITY
+		p.pitch = clamp(p.pitch, -player.MAX_PITCH, player.MAX_PITCH)
 
-		if platform.key_pressed(.Jump) do jump_latch = true
+		if platform.key_pressed(.SPACE) do jump_latch = true
 
 		intent := player.Intent {
 			forward = key_axis(.S, .W),
@@ -49,7 +49,7 @@ main :: proc() {
 			jump    = jump_latch,
 		}
 
-		accumulator += frame
+		accumulator += frame_dt
 
 		for accumulator >= SIM_DT {
 			player.update(&p, &chunk, intent, SIM_DT)

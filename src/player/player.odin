@@ -6,12 +6,14 @@ import "core:math/linalg"
 
 SENSITIVITY :: f32(0.003)
 
-PLAYER_RADIUS :: f32(0.5)
+RADIUS :: f32(0.5)
 EYE_HEIGHT :: f32(1.0)
 WALK_SPEED :: f32(6)
 JUMP_SPEED :: f32(10)
 GRAVITY :: f32(30)
-MAX_FALL :: f32(25)
+MAX_PITCH :: 1.55
+MAX_FALL_SPEED :: f32(25)
+
 
 Player :: struct {
 	position: [3]f32,
@@ -34,7 +36,7 @@ update :: proc(p: ^Player, chunk: ^world.Chunk, intent: Intent, dt: f32) {
 	p.velocity.x = direction.x * WALK_SPEED
 	p.velocity.z = direction.z * WALK_SPEED
 	if p.grounded && intent.jump do p.velocity.y = JUMP_SPEED
-	p.velocity.y = max(p.velocity.y - GRAVITY * dt, -MAX_FALL)
+	p.velocity.y = max(p.velocity.y - GRAVITY * dt, -MAX_FALL_SPEED)
 	p.position += p.velocity * dt
 	resolve_collision(p, chunk)
 }
@@ -43,10 +45,10 @@ resolve_collision :: proc(p: ^Player, chunk: ^world.Chunk) {
 	p.grounded = false
 	for _ in 0 ..< 3 {
 		d := world.sample(chunk, p.position)
-		if d >= PLAYER_RADIUS do break
+		if d >= RADIUS do break
 		n := world.gradient(chunk, p.position)
 		if n == {0, 0, 0} do break
-		p.position += n * (PLAYER_RADIUS - d)
+		p.position += n * (RADIUS - d)
 		if into := linalg.dot(p.velocity, n); into < 0 do p.velocity -= n * into
 		if n.y > 0.7 do p.grounded = true
 	}
