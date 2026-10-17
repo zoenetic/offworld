@@ -1,0 +1,3 @@
+[tools]
+odin = "dev-2026-10"
+ols = { version = "dev-2026-10", rename_exe = { "odinfmt-*" = "odinfmt", "ols-*" = "ols" } }
