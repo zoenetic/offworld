@@ -5,6 +5,7 @@ import rl "vendor:raylib"
 init_window :: proc(width, height: i32, title: cstring) {
 	rl.SetConfigFlags({.VSYNC_HINT})
 	rl.InitWindow(width, height, title)
+	default_material = rl.LoadMaterialDefault()
 }
 
 should_close :: proc() -> bool {
@@ -12,6 +13,7 @@ should_close :: proc() -> bool {
 }
 
 close_window :: proc() {
+	rl.UnloadMaterial(default_material)
 	rl.CloseWindow()
 }
 

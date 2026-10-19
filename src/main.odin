@@ -2,13 +2,13 @@ package main
 
 import "core:math"
 
+import "mesh"
 import "platform"
 import "player"
 import "world"
 
 SIM_DT :: f32(1.0 / 60.0)
 MAX_FRAME_TIME :: f32(0.25)
-SPAWN :: [3]f32{4, 8, 4}
 
 key_axis :: proc(negative, positive: platform.Key) -> f32 {
 	v: f32
@@ -18,13 +18,22 @@ key_axis :: proc(negative, positive: platform.Key) -> f32 {
 }
 
 main :: proc() {
-	platform.init_window(1280, 720, "offworld")
+	platform.init_window(1920, 1080, "offworld")
 	defer platform.close_window()
 
 	chunk: world.Chunk
-	world.fill_test_scene(&chunk)
+	world.fill_terrain(&chunk, world.DEFAULT_TERRAIN, {0, 0, 0})
+
+	terrain := mesh.build(&chunk)
+	defer mesh.destroy(&terrain)
+
+	terrain_gpu := platform.upload_mesh(terrain.positions[:], terrain.colours[:])
+	defer platform.unload_mesh(&terrain_gpu)
+
+	spawn := world.terrain_height(world.DEFAULT_TERRAIN, 4, 4) + 2
+
 	p := player.Player {
-		position = SPAWN,
+		position = spawn,
 		yaw      = math.PI,
 	}
 
@@ -56,7 +65,7 @@ main :: proc() {
 			intent.jump = false
 			jump_latch = false
 			if p.position.y < -20 {
-				p.position = SPAWN
+				p.position = spawn
 				p.velocity = {0, 0, 0}
 			}
 			accumulator -= SIM_DT
@@ -72,19 +81,7 @@ main :: proc() {
 
 		platform.begin_frame()
 		platform.begin_3d(camera)
-		for z in 0 ..< world.CHUNK_SIZE {
-			for y in 0 ..< world.CHUNK_SIZE {
-				for x in 0 ..< world.CHUNK_SIZE {
-					if chunk.density[world.index(x, y, z)] < 0 {
-						platform.draw_cube(
-							{f32(x), f32(y), f32(z)},
-							{0.9, 0.9, 0.9},
-							{120, 160, 90, 255},
-						)
-					}
-				}
-			}
-		}
+		platform.draw_mesh(terrain_gpu)
 		platform.end_3d()
 		platform.end_frame()
 	}
