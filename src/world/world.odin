@@ -34,6 +34,10 @@ load_chunk :: proc(w: ^World, coord: [3]int) -> ^Chunk {
 	return c
 }
 
+unload_chunk :: proc(w: ^World, coord: [3]int) {
+	if c, ok := w.chunks[coord]; ok do free(c); delete_key(&w.chunks, coord)
+}
+
 locate :: proc(p: [3]f32) -> (coord: [3]int, local: [3]f32) {
 	coord = linalg.array_cast(linalg.floor(p / CHUNK_SIZE), int)
 	local = p - origin(coord)
