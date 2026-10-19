@@ -32,26 +32,26 @@ movement_direction :: proc(intent: Intent, yaw: f32) -> [3]f32 {
 	return dir
 }
 
-update :: proc(p: ^Player, chunk: ^world.Chunk, intent: Intent, dt: f32) {
+update :: proc(p: ^Player, w: ^world.World, intent: Intent, dt: f32) {
 	direction := movement_direction(intent, p.yaw)
 	p.velocity.x = direction.x * WALK_SPEED
 	p.velocity.z = direction.z * WALK_SPEED
 	if p.grounded && intent.jump do p.velocity.y = JUMP_SPEED
 	p.velocity.y = max(p.velocity.y - GRAVITY * dt, -MAX_FALL_SPEED)
 	p.position += p.velocity * dt
-	resolve_collision(p, chunk)
+	resolve_collision(p, w)
 }
 
-resolve_collision :: proc(p: ^Player, chunk: ^world.Chunk) {
+resolve_collision :: proc(p: ^Player, w: ^world.World) {
 	p.grounded = false
 	for _ in 0 ..< 3 {
-		d := world.sample(chunk, p.position)
+		d := world.sample(w, p.position)
 		if d >= RADIUS do break
-		n := world.gradient(chunk, p.position)
+		n := world.gradient(w, p.position)
 		if n == {0, 0, 0} do break
 		if n.y > mesh.WALKABLE_NORMAL_Y {
 			p.position.y += (RADIUS - d) / n.y
-			if p.velocity.y < 0 do p.velocity = 0
+			if p.velocity.y < 0 do p.velocity.y = 0
 			p.grounded = true
 		} else {
 			p.position += n * (RADIUS - d)

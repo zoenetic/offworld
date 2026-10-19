@@ -21,16 +21,23 @@ main :: proc() {
 	platform.init_window(1920, 1080, "offworld")
 	defer platform.close_window()
 
-	chunk: world.Chunk
-	world.fill_terrain(&chunk, world.DEFAULT_TERRAIN, {0, 0, 0})
+	w := world.make_world(world.DEFAULT_TERRAIN)
+	defer world.destroy_world(&w)
+	for cz in -2 ..= 2 do for cx in -2 ..= 2 do world.load_chunk(&w, {cx, 0, cz})
 
-	terrain := mesh.build(&chunk)
-	defer mesh.destroy(&terrain)
+	chunk_meshes: [dynamic]platform.Gpu_Mesh
+	defer {
+		for &g in chunk_meshes do platform.unload_mesh(&g)
+		delete(chunk_meshes)
+	}
+	for _, chunk in w.chunks {
+		m := mesh.build(chunk)
+		defer mesh.destroy(&m)
+		if len(m.positions) == 0 do continue
+		append(&chunk_meshes, platform.upload_mesh(m.positions[:], m.colours[:]))
+	}
 
-	terrain_gpu := platform.upload_mesh(terrain.positions[:], terrain.colours[:])
-	defer platform.unload_mesh(&terrain_gpu)
-
-	spawn := world.terrain_height(world.DEFAULT_TERRAIN, 4, 4) + 2
+	spawn := [3]f32{4, world.terrain_height(world.DEFAULT_TERRAIN, 4, 4) + 2, 4}
 
 	p := player.Player {
 		position = spawn,
@@ -61,7 +68,7 @@ main :: proc() {
 		accumulator += frame_dt
 
 		for accumulator >= SIM_DT {
-			player.update(&p, &chunk, intent, SIM_DT)
+			player.update(&p, &w, intent, SIM_DT)
 			intent.jump = false
 			jump_latch = false
 			if p.position.y < -20 {
@@ -81,7 +88,7 @@ main :: proc() {
 
 		platform.begin_frame()
 		platform.begin_3d(camera)
-		platform.draw_mesh(terrain_gpu)
+		for g in chunk_meshes do platform.draw_mesh(g)
 		platform.end_3d()
 		platform.end_frame()
 	}

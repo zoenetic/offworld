@@ -30,17 +30,18 @@ terrain_height :: proc(params: Terrain_Params, x, z: f32) -> f32 {
 	return value + params.base_height
 }
 
-fill_terrain :: proc(chunk: ^Chunk, params: Terrain_Params, origin: [3]f32) {
-	for z in 0 ..< CHUNK_SIZE {
-		for x in 0 ..< CHUNK_SIZE {
-			wx := origin.x + f32(x)
-			wz := origin.z + f32(z)
+fill_terrain :: proc(chunk: ^Chunk, params: Terrain_Params) {
+	o := origin(chunk.coord)
+	for z in -APRON ..< CHUNK_SIZE + APRON {
+		for x in -APRON ..< CHUNK_SIZE + APRON {
+			wx := o.x + f32(x)
+			wz := o.z + f32(z)
 			h := terrain_height(params, wx, wz)
 			dhdx := (terrain_height(params, wx + 1, wz) - terrain_height(params, wx - 1, wz)) / 2
 			dhdz := (terrain_height(params, wx, wz + 1) - terrain_height(params, wx, wz - 1)) / 2
 			slope_fix := math.sqrt(1 + dhdx * dhdx + dhdz * dhdz)
-			for y in 0 ..< CHUNK_SIZE {
-				wy := origin.y + f32(y)
+			for y in -APRON ..< CHUNK_SIZE + APRON {
+				wy := o.y + f32(y)
 				chunk.density[index(x, y, z)] = (wy - h) / slope_fix
 			}
 		}

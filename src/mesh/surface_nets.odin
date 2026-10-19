@@ -21,20 +21,22 @@ ROCK :: [3]f32{130, 125, 115}
 WALKABLE_NORMAL_Y :: f32(0.7)
 
 N :: world.CHUNK_SIZE
-CELLS :: N - 1
+CUBE_LO :: -1
+CUBES :: N + 1
 
 @(private)
 cell_index :: proc(x, y, z: int) -> int {
-	return x + y * CELLS + z * CELLS * CELLS
+	return (x - CUBE_LO) + (y - CUBE_LO) * CUBES + (z - CUBE_LO) * CUBES * CUBES
 }
 
 build :: proc(chunk: ^world.Chunk) -> (m: Mesh) {
-	cell_vertex := make([][3]f32, CELLS * CELLS * CELLS)
+	cell_vertex := make([][3]f32, CUBES * CUBES * CUBES)
+	o := world.origin(chunk.coord)
 	defer delete(cell_vertex)
 
-	for z in 0 ..< CELLS {
-		for y in 0 ..< CELLS {
-			for x in 0 ..< CELLS {
+	for z in CUBE_LO ..< N {
+		for y in CUBE_LO ..< N {
+			for x in CUBE_LO ..< N {
 				d: [8]f32
 				inside: bit_set[0 ..< 8]
 				for i in 0 ..< 8 {
@@ -59,7 +61,7 @@ build :: proc(chunk: ^world.Chunk) -> (m: Mesh) {
 					}
 				}
 				cell_vertex[cell_index(x, y, z)] =
-					[3]f32{f32(x), f32(y), f32(z)} + sum / f32(crossings)
+					o + [3]f32{f32(x), f32(y), f32(z)} + sum / f32(crossings)
 			}
 		}
 	}
@@ -71,7 +73,6 @@ build :: proc(chunk: ^world.Chunk) -> (m: Mesh) {
 				for a in 0 ..< 3 {
 					u := (a + 1) % 3
 					v := (a + 2) % 3
-					if p[a] >= CELLS || p[u] < 1 || p[v] < 1 || p[u] >= CELLS || p[v] >= CELLS do continue
 					q := p
 					q[a] += 1
 					d1 := chunk.density[world.index(q.x, q.y, q.z)]

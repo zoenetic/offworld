@@ -4,47 +4,38 @@ import "core:math"
 import "core:math/linalg"
 
 CHUNK_SIZE :: 32
+APRON :: 1
+SAMPLES :: CHUNK_SIZE + 2 * APRON
+OUTSIDE_DISTANCE :: f32(1)
 
 Chunk :: struct {
-	density: [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]f32,
+	coord:   [3]int,
+	density: [SAMPLES * SAMPLES * SAMPLES]f32,
 }
 
 index :: proc(x, y, z: int) -> int {
-	return x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE
+	return (x + APRON) + (y + APRON) * SAMPLES + (z + APRON) * SAMPLES * SAMPLES
 }
 
-fill_sphere :: proc(chunk: ^Chunk, center: [3]f32, radius: f32) {
-	for z in 0 ..< CHUNK_SIZE {
-		for y in 0 ..< CHUNK_SIZE {
-			for x in 0 ..< CHUNK_SIZE {
-				cell: [3]f32 = {f32(x), f32(y), f32(z)}
-				density := linalg.distance(cell, center) - radius
-				i := index(x, y, z)
-				chunk.density[i] = density
-			}
-		}
-	}
+origin :: proc(coord: [3]int) -> [3]f32 {
+	return linalg.array_cast(coord, f32) * CHUNK_SIZE
 }
 
-OUTSIDE_DISTANCE :: f32(1)
+@(private)
+sample_local :: proc(chunk: ^Chunk, local: [3]f32) -> f32 {
+	x0 := int(math.floor(local.x))
+	y0 := int(math.floor(local.y))
+	z0 := int(math.floor(local.z))
 
-sample :: proc(chunk: ^Chunk, cell: [3]f32) -> f32 {
-	x0 := int(math.floor(cell.x))
-	y0 := int(math.floor(cell.y))
-	z0 := int(math.floor(cell.z))
-
-	if x0 < 0 ||
-	   y0 < 0 ||
-	   z0 < 0 ||
-	   x0 >= CHUNK_SIZE - 1 ||
-	   y0 >= CHUNK_SIZE - 1 ||
-	   z0 >= CHUNK_SIZE - 1 {
+	LO :: -APRON
+	HI :: CHUNK_SIZE + APRON - 1
+	if x0 < LO || y0 < LO || z0 < LO || x0 >= HI || y0 >= HI || z0 >= HI {
 		return OUTSIDE_DISTANCE
 	}
 
-	fx := cell.x - f32(x0)
-	fy := cell.y - f32(y0)
-	fz := cell.z - f32(z0)
+	fx := local.x - f32(x0)
+	fy := local.y - f32(y0)
+	fz := local.z - f32(z0)
 
 	c000 := chunk.density[index(x0, y0, z0)]
 	c100 := chunk.density[index(x0 + 1, y0, z0)]
@@ -66,29 +57,16 @@ sample :: proc(chunk: ^Chunk, cell: [3]f32) -> f32 {
 	return math.lerp(c0, c1, fz)
 }
 
-gradient :: proc(chunk: ^Chunk, cell: [3]f32) -> [3]f32 {
-	H :: f32(0.5)
-	g := [3]f32 {
-		sample(chunk, cell + {H, 0, 0}) - sample(chunk, cell - {H, 0, 0}),
-		sample(chunk, cell + {0, H, 0}) - sample(chunk, cell - {0, H, 0}),
-		sample(chunk, cell + {0, 0, H}) - sample(chunk, cell - {0, 0, H}),
-	}
-	length := linalg.length(g)
-	if length < 1e-6 {
-		return {0, 0, 0}
-	}
-	return g / length
-}
-
 GROUND_Y :: f32(4)
 SPHERE_CENTER :: [3]f32{16, 10, 16}
 SPHERE_RADIUS :: f32(8)
 
 fill_test_scene :: proc(chunk: ^Chunk) {
-	for z in 0 ..< CHUNK_SIZE {
-		for y in 0 ..< CHUNK_SIZE {
-			for x in 0 ..< CHUNK_SIZE {
-				cell := [3]f32{f32(x), f32(y), f32(z)}
+	o := origin(chunk.coord)
+	for z in -APRON ..< CHUNK_SIZE + APRON {
+		for y in -APRON ..< CHUNK_SIZE + APRON {
+			for x in -APRON ..< CHUNK_SIZE + APRON {
+				cell := o + {f32(x), f32(y), f32(z)}
 				d_sphere := linalg.distance(cell, SPHERE_CENTER) - SPHERE_RADIUS
 				d_ground := cell.y - GROUND_Y
 				chunk.density[index(x, y, z)] = min(d_sphere, d_ground)
