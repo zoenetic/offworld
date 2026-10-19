@@ -1,5 +1,6 @@
 package player
 
+import "../mesh"
 import "../world"
 import "core:math"
 import "core:math/linalg"
@@ -48,9 +49,14 @@ resolve_collision :: proc(p: ^Player, chunk: ^world.Chunk) {
 		if d >= RADIUS do break
 		n := world.gradient(chunk, p.position)
 		if n == {0, 0, 0} do break
-		p.position += n * (RADIUS - d)
-		if into := linalg.dot(p.velocity, n); into < 0 do p.velocity -= n * into
-		if n.y > 0.7 do p.grounded = true
+		if n.y > mesh.WALKABLE_NORMAL_Y {
+			p.position.y += (RADIUS - d) / n.y
+			if p.velocity.y < 0 do p.velocity = 0
+			p.grounded = true
+		} else {
+			p.position += n * (RADIUS - d)
+			if into := linalg.dot(p.velocity, n); into < 0 do p.velocity -= n * into
+		}
 	}
 }
 

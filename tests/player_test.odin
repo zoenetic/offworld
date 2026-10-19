@@ -2,8 +2,57 @@ package tests
 
 import "../src/player"
 import "../src/world"
+import "core:math"
 import "core:math/linalg"
 import "core:testing"
+
+fill_slope :: proc(chunk: ^world.Chunk, rise: f32) {
+	for z in 0 ..< world.CHUNK_SIZE {
+		for y in 0 ..< world.CHUNK_SIZE {
+			for x in 0 ..< world.CHUNK_SIZE {
+				chunk.density[world.index(x, y, z)] =
+					(f32(y) - rise * f32(x) - 4) / math.sqrt(1 + rise * rise)
+			}
+		}
+	}
+}
+
+@(test)
+no_creep_on_walkable_slope :: proc(t: ^testing.T) {
+	chunk := new(world.Chunk)
+	defer free(chunk)
+	fill_slope(chunk, 0.5) // about 26.6°: walkable
+	p := settled_player(chunk, {16, 16, 16})
+	if !testing.expect(t, p.grounded, "setup: player never settled") do return
+	start := p.position
+	tick(&p, chunk, {}, 300)
+	drift := linalg.distance(start.xz, p.position.xz)
+	testing.expectf(t, drift < 0.01, "crept %v units downhill in 5 s", drift)
+}
+
+@(test)
+slides_off_steep_slope :: proc(t: ^testing.T) {
+	chunk := new(world.Chunk)
+	defer free(chunk)
+	fill_slope(chunk, 1.5) // about 56°: too steep to stand on
+	p := player.Player {
+		position = {16, 30, 16},
+	}
+	tick(&p, chunk, {}, 60)
+	start := p.position
+	for i in 0 ..< 60 {
+		player.update(&p, chunk, {}, DT)
+		if !testing.expectf(t, !p.grounded, "stood on a 56° slope at tick %d", i) do return
+	}
+	// The slope rises toward +x, so downhill is -x.
+	testing.expectf(
+		t,
+		p.position.x < start.x - 0.25,
+		"didn't slide downhill: x %v -> %v",
+		start.x,
+		p.position.x,
+	)
+}
 
 @(test)
 settles_on_ground :: proc(t: ^testing.T) {
