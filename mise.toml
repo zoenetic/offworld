@@ -14,3 +14,7 @@ depends = ["vet", "test"]
 [tasks.dev]
 depends = ["check"]
 run = "odin run src -vet"
+
+# Optimised build: chunk generation + meshing is ~9x faster than the default debug build.
+[tasks.play]
+run = "odin run src -o:speed"
