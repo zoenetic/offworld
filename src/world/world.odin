@@ -2,6 +2,8 @@ package world
 
 import "core:math/linalg"
 
+WALKABLE_NORMAL_Y :: f32(0.7)
+
 World :: struct {
 	chunks:  map[[3]int]^Chunk,
 	terrain: Terrain_Params,

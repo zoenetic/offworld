@@ -1,6 +1,5 @@
 package player
 
-import "../mesh"
 import "../world"
 import "core:math"
 import "core:math/linalg"
@@ -15,13 +14,21 @@ GRAVITY :: f32(30)
 MAX_PITCH :: 1.55
 MAX_FALL_SPEED :: f32(25)
 
-
 Player :: struct {
 	position: [3]f32,
 	velocity: [3]f32,
 	yaw:      f32,
 	pitch:    f32,
 	grounded: bool,
+}
+
+turn :: proc(p: ^Player, mouse: [2]f32) {
+	p.yaw -= mouse.x * SENSITIVITY
+	p.pitch = clamp(p.pitch - mouse.y * SENSITIVITY, -MAX_PITCH, MAX_PITCH)
+}
+
+eye :: proc(p: Player) -> [3]f32 {
+	return p.position + {0, EYE_HEIGHT, 0}
 }
 
 movement_direction :: proc(intent: Intent, yaw: f32) -> [3]f32 {
@@ -49,7 +56,7 @@ resolve_collision :: proc(p: ^Player, w: ^world.World) {
 		if d >= RADIUS do break
 		n := world.gradient(w, p.position)
 		if n == {0, 0, 0} do break
-		if n.y > mesh.WALKABLE_NORMAL_Y {
+		if n.y > world.WALKABLE_NORMAL_Y {
 			p.position.y += (RADIUS - d) / n.y
 			if p.velocity.y < 0 do p.velocity.y = 0
 			p.grounded = true

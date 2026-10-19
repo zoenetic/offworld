@@ -18,8 +18,6 @@ AMBIENT :: f32(0.35)
 GRASS :: [3]f32{110, 160, 80}
 ROCK :: [3]f32{130, 125, 115}
 
-WALKABLE_NORMAL_Y :: f32(0.7)
-
 N :: world.CHUNK_SIZE
 CUBE_LO :: -1
 CUBES :: N + 1
@@ -104,7 +102,7 @@ build :: proc(chunk: ^world.Chunk) -> (m: Mesh) {
 emit_triangle :: proc(m: ^Mesh, a, b, c: [3]f32) {
 	n := linalg.normalize(linalg.cross(b - a, c - a))
 	light := AMBIENT + (1 - AMBIENT) * max(0, linalg.dot(n, linalg.normalize(SUN_DIR)))
-	base := GRASS if n.y > WALKABLE_NORMAL_Y else ROCK
+	base := GRASS if n.y > world.WALKABLE_NORMAL_Y else ROCK
 	rgb := base * light
 	colour := [4]u8{u8(rgb.r), u8(rgb.g), u8(rgb.b), 255}
 	append(&m.positions, a, b, c)
